@@ -21,11 +21,38 @@ var defaultSystemPrompt string
 //go:embed prompts/locked.md
 var lockedPrompt string
 
+//go:embed prompts/education.md
+var educationPrompt string
+
 // buildSystemPrompt assembles what Hermes receives on every CS turn:
 // editable instructions + data from settings + locked rules + sender context.
 func buildSystemPrompt(s Settings, senderName string, now time.Time, paymentSent bool) string {
 	var b strings.Builder
 	b.WriteString(strings.TrimSpace(s.Instructions))
+
+	b.WriteString("\n\n")
+	b.WriteString(strings.TrimSpace(educationPrompt))
+	b.WriteString("\n\n## Knowledge produk yang sudah disetujui admin\n\n")
+	activeProducts := 0
+	for _, p := range s.ProductKnowledge {
+		if !p.Enabled {
+			continue
+		}
+		activeProducts++
+		fmt.Fprintf(&b, "### %s (kode: %s)\n", p.Name, p.Code)
+		fmt.Fprintf(&b, "- Sasaran: %s\n- Situasi/kebutuhan: %s\n- Big Why: %s\n- Manfaat: %s\n- Metode: %s\n- Fakta pendukung: %s\n- Batasan: %s\n",
+			orDash(p.Audience), orDash(p.Needs), orDash(p.BigWhy), orDash(p.Benefits),
+			orDash(p.Method), orDash(p.Evidence), orDash(p.Limitations))
+		if len(p.PackageCodes) == 0 {
+			b.WriteString("- Belum ada paket terkait. Jangan mengarang harga.\n\n")
+		} else {
+			fmt.Fprintf(&b, "- Kode paket terkait: %s\n\n", strings.Join(p.PackageCodes, ", "))
+		}
+	}
+	if activeProducts == 0 {
+		b.WriteString("Belum ada Knowledge Produk aktif. Jangan menggunakan draft atau mengarang manfaat baru.\n")
+	}
+
 	b.WriteString("\n\n## Data dari pengaturan (sumber kebenaran, menang atas teks lain)\n\n")
 	b.WriteString("Paket yang tersedia (kode untuk [[REKENING:<kode>]]):\n")
 	for _, p := range s.Packages {

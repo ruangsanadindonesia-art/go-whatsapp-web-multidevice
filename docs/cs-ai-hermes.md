@@ -171,6 +171,7 @@ perubahan berlaku langsung setelah **Simpan**, tanpa restart.
 |---|---|
 | Status | Saklar AI aktif/nonaktif untuk semua chat, status Hermes, daftar chat yang dijeda + tombol "Aktifkan AI" |
 | Paket & Pembayaran | Paket (kode, nama, harga, keterangan), teks info pembayaran/rekening, teks form pendaftaran |
+| Knowledge Produk | Kelola banyak program: sasaran, kebutuhan, Big Why, manfaat, metode, bukti, batasan, kode paket terkait; draft tidak masuk AI sebelum diaktifkan |
 | Instruksi | Instruksi CS (gaya, emoji, alur, fakta program), tombol kembalikan default, aturan tetap (hanya baca), pratinjau instruksi lengkap yang diterima AI |
 | Galeri Gambar | Unggah JPG/PNG/WEBP maks 5 MB dengan kode, keterangan "kapan dikirim", caption. Unggah dengan kode yang sama untuk mengganti |
 | Operasional | Nomor admin, lama jeda, penggabungan pesan, batas pesan per jam, indikator "mengetik", pesan otomatis |
@@ -181,6 +182,8 @@ permintaan tanpa token itu. Permintaan yang mengubah data juga harus berasal dar
 halaman itu sendiri, untuk mencegah CSRF. Pengaturan disimpan di
 `/opt/gowa-deploy/cs-bridge-data/settings.json`, gambar di
 `/opt/gowa-deploy/cs-bridge-data/media/`. Folder itu sebaiknya ikut di-backup.
+
+**Edukasi CLEAR:** Pada tahap Explain, AI menghubungkan nilai belajar Al-Qur'an dengan manfaat praktis berdasarkan kebutuhan leads. Jawaban harga tetap diberikan langsung ketika ditanya. Knowledge Produk yang belum aktif tidak ikut dikirim ke Hermes. Draft awal Tahsin Reguler ada di [dokumen review](cs-ai-product-knowledge-draft.md). Setelah review, aktifkan pada tab Knowledge Produk dan simpan. Pengaturan lama akan mendapat satu draft nonaktif tanpa mengubah harga atau konfigurasi lain.
 
 **Mengaktifkan halaman (sekali saja, di server):**
 
