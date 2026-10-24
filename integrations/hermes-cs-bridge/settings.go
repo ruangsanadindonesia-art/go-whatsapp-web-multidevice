@@ -31,6 +31,39 @@ type MediaItem struct {
 	UploadedAt  time.Time `json:"uploaded_at"`
 }
 
+// ProductKnowledge is a reviewed source of truth for a learning program.
+// Disabled entries are drafts and are not added to the AI context.
+type ProductKnowledge struct {
+	Code         string   `json:"code"`
+	Name         string   `json:"name"`
+	Audience     string   `json:"audience"`
+	Needs        string   `json:"needs"`
+	BigWhy       string   `json:"big_why"`
+	Benefits     string   `json:"benefits"`
+	Method       string   `json:"method"`
+	Evidence     string   `json:"evidence"`
+	Limitations  string   `json:"limitations"`
+	PackageCodes []string `json:"package_codes"`
+	Enabled      bool     `json:"enabled"`
+}
+
+// First-run content is intentionally unpublished pending product-owner review.
+func defaultProductKnowledgeDrafts() []ProductKnowledge {
+	return []ProductKnowledge{{
+		Code: "tahsin-reguler",
+		Name: "Tahsin Reguler",
+		Audience: "Calon santri yang ingin mulai dari dasar atau memperbaiki makhraj dan tajwid. Kelas ikhwan dan akhwat dipisah.",
+		Needs: "Belum lancar, masih ragu pada makhraj/tajwid, atau butuh koreksi langsung. Pilih hanya situasi yang benar-benar disampaikan calon santri.",
+		BigWhy: "Al-Qur'an dibaca dalam keseharian, termasuk Al-Fatihah dalam salat. Memperbaiki bacaan adalah ikhtiar agar semakin teliti membaca, tanpa menghakimi kemampuan seseorang atau menetapkan hukum salatnya.",
+		Benefits: "Mendapat koreksi bacaan langsung, mengenali bagian yang perlu dilatih, dan belajar bertahap sesuai level.",
+		Method: "Kelas live melalui Zoom; guru menyimak dan memberi koreksi bertahap. Materi terstruktur dari makhraj menuju tajwid. Jadwal pasti dan penempatan kelas oleh admin.",
+		Evidence: "Fakta pada instruksi CS: Zoom live, koreksi langsung oleh guru, penyesuaian level, dan kelas ikhwan/akhwat terpisah. Belum ada testimoni atau angka capaian terverifikasi.",
+		Limitations: "Tidak menjamin cepat lancar atau hasil tertentu. Slot, jadwal pasti, profil guru, dan jumlah peserta kelas tertentu dikonfirmasi admin.",
+		PackageCodes: []string{"1x", "2x"},
+		Enabled: false,
+	}}
+}
+
 // Settings is everything an admin can change from the /cs-ai page. Secrets and
 // addresses stay in the environment and are never exposed here.
 type Settings struct {
@@ -41,6 +74,7 @@ type Settings struct {
 	RateLimitPerHour int         `json:"rate_limit_per_hour"`
 	Typing           bool        `json:"typing"`
 	Packages         []Package   `json:"packages"`
+	ProductKnowledge []ProductKnowledge `json:"product_knowledge"`
 	PaymentText      string      `json:"payment_text"` // {PAKET} and {NOMINAL} are filled in
 	FormText         string      `json:"form_text"`
 	HandoffMessage   string      `json:"handoff_message"`
@@ -111,6 +145,7 @@ func defaultSettings(c Config) Settings {
 			{Code: "1x", Name: "1× sepekan", Price: "Rp149.000", Detail: "per bulan, 4 pertemuan"},
 			{Code: "2x", Name: "2× sepekan", Price: "Rp199.000", Detail: "per bulan, 8 pertemuan"},
 		},
+		ProductKnowledge: defaultProductKnowledgeDrafts(),
 		PaymentText:      defaultPaymentText,
 		FormText:         defaultFormText,
 		HandoffMessage:   c.HandoffMessage,
@@ -175,6 +210,56 @@ func (s *Settings) Validate() error {
 	}
 	if len(s.Packages) == 0 {
 		add("isi minimal satu paket")
+	}
+
+	if len(s.ProductKnowledge) > 30 {
+		add("maksimal 30 knowledge produk")
+	}
+	productCodes := map[string]bool{}
+	productChars := 0
+	for i := range s.ProductKnowledge {
+		p := &s.ProductKnowledge[i]
+		p.Code = strings.ToLower(strings.TrimSpace(p.Code))
+		p.Name = strings.TrimSpace(p.Name)
+		p.Audience = strings.TrimSpace(p.Audience)
+		p.Needs = strings.TrimSpace(p.Needs)
+		p.BigWhy = strings.TrimSpace(p.BigWhy)
+		p.Benefits = strings.TrimSpace(p.Benefits)
+		p.Method = strings.TrimSpace(p.Method)
+		p.Evidence = strings.TrimSpace(p.Evidence)
+		p.Limitations = strings.TrimSpace(p.Limitations)
+		if !codeRe.MatchString(p.Code) || productCodes[p.Code] {
+			add("kode knowledge produk %q tidak valid atau duplikat", p.Code)
+		}
+		productCodes[p.Code] = true
+		if p.Name == "" {
+			add("knowledge produk %q harus punya nama", p.Code)
+		}
+		if p.Enabled && (p.Audience == "" || p.BigWhy == "" || p.Benefits == "" || p.Method == "") {
+			add("knowledge produk aktif %q perlu sasaran, big why, manfaat, dan metode", p.Code)
+		}
+		for _, field := range []string{p.Name, p.Audience, p.Needs, p.BigWhy, p.Benefits, p.Method, p.Evidence, p.Limitations} {
+			n := len([]rune(field))
+			productChars += n
+			if n > 3000 {
+				add("kolom knowledge produk %q maksimal 3000 karakter", p.Code)
+			}
+		}
+		if len(p.PackageCodes) > 10 {
+			add("knowledge produk %q maksimal 10 paket", p.Code)
+		}
+		seenPackages := map[string]bool{}
+		for j := range p.PackageCodes {
+			ref := strings.ToLower(strings.TrimSpace(p.PackageCodes[j]))
+			p.PackageCodes[j] = ref
+			if !codes[ref] || seenPackages[ref] {
+				add("kode paket %q untuk produk %q tidak ada atau duplikat", ref, p.Code)
+			}
+			seenPackages[ref] = true
+		}
+	}
+	if productChars > 35000 {
+		add("total knowledge produk maksimal 35000 karakter")
 	}
 
 	limits := []struct {
@@ -243,6 +328,13 @@ func LoadSettings(path, mediaDir string, seed Settings) (*SettingsStore, error) 
 		if st.s.Media == nil {
 			st.s.Media = []MediaItem{}
 		}
+		if st.s.ProductKnowledge == nil {
+			// Settings saved before the knowledge feature receive only a disabled draft.
+			st.s.ProductKnowledge = defaultProductKnowledgeDrafts()
+			if err := st.saveLocked(); err != nil {
+				return nil, err
+			}
+		}
 	}
 	if mediaDir != "" {
 		if err := os.MkdirAll(mediaDir, 0o700); err != nil {
@@ -259,6 +351,10 @@ func (st *SettingsStore) Get() Settings {
 	c := st.s
 	c.AdminNumbers = append([]string(nil), st.s.AdminNumbers...)
 	c.Packages = append([]Package(nil), st.s.Packages...)
+	c.ProductKnowledge = append([]ProductKnowledge(nil), st.s.ProductKnowledge...)
+	for i := range c.ProductKnowledge {
+		c.ProductKnowledge[i].PackageCodes = append([]string(nil), st.s.ProductKnowledge[i].PackageCodes...)
+	}
 	c.Media = append([]MediaItem(nil), st.s.Media...)
 	return c
 }
