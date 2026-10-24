@@ -45,10 +45,11 @@ type Store struct {
 	PaymentSent map[string]time.Time `json:"payment_sent"`
 	Outbound     map[string]OutboundRecord `json:"outbound"`
 	LastOutbound map[string]OutboundNote   `json:"last_outbound"`
+	SeenChats    map[string]time.Time     `json:"seen_chats"`
 }
 
 func LoadStore(path string) (*Store, error) {
-	s := &Store{path: path, Paused: map[string]Pause{}, Phones: map[string]string{}, PaymentSent: map[string]time.Time{}, Outbound: map[string]OutboundRecord{}, LastOutbound: map[string]OutboundNote{}}
+	s := &Store{path: path, Paused: map[string]Pause{}, Phones: map[string]string{}, PaymentSent: map[string]time.Time{}, Outbound: map[string]OutboundRecord{}, LastOutbound: map[string]OutboundNote{}, SeenChats: map[string]time.Time{}}
 	b, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {
 		return s, nil
@@ -73,6 +74,9 @@ func LoadStore(path string) (*Store, error) {
 	}
 	if s.LastOutbound == nil {
 		s.LastOutbound = map[string]OutboundNote{}
+	}
+	if s.SeenChats == nil {
+		s.SeenChats = map[string]time.Time{}
 	}
 	return s, nil
 }
@@ -188,10 +192,8 @@ func (s *Store) FindOutbound(key string, now time.Time) (OutboundRecord, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	rec, ok := s.Outbound[key]
-	return rec, ok && !rec.MessageIDIsEmpty() && now.Before(rec.ExpiresAt)
+	return rec, ok && rec.MessageID != "" && now.Before(rec.ExpiresAt)
 }
-
-func (r OutboundRecord) MessageIDIsEmpty() bool { return r.MessageID == "" }
 
 // RecordOutbound saves the idempotency key and the latest note together,
 // through the same atomic state-file replacement as the rest of the bridge.
@@ -227,5 +229,39 @@ func (s *Store) RecentOutbound(chatID string, now time.Time) *OutboundNote {
 		return nil
 	}
 	return &note
+}
+
+
+// RememberLeadChat records a real incoming lead chat, including @lid ids. A
+// Dashboard cannot initiate outbound to arbitrary numbers not seen by CS.
+func (s *Store) RememberLeadChat(chatID string, now time.Time) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if _, exists := s.SeenChats[chatID]; exists {
+		return
+	}
+	for chat, at := range s.SeenChats {
+		if now.Sub(at) > 180*24*time.Hour {
+			delete(s.SeenChats, chat)
+		}
+	}
+	s.SeenChats[chatID] = now
+	_ = s.save()
+}
+
+func (s *Store) HasSeenLeadChat(chatID string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if _, ok := s.SeenChats[chatID]; ok {
+		return true
+	}
+	// Backward compatibility: existing bridge installations already retain the
+	// phone -> chat map, populated by legitimate incoming lead messages.
+	for _, known := range s.Phones {
+		if known == chatID {
+			return true
+		}
+	}
+	return false
 }
 
