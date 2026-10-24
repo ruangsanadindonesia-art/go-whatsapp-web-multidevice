@@ -29,6 +29,15 @@ func TestCSFunnelMarkersAndContextualCaptionParsing(t *testing.T) {
 		t.Fatalf("unknown package was accepted: %+v", out)
 	}
 
+	out = renderReply("[[GAMBAR:brosur|Pilihan 1× sepekan Rp999.999 untuk Kakak]]", s)
+	if out.Images[0].Caption != "Caption galeri" {
+		t.Fatalf("unverified price leaked in image caption: %+v", out)
+	}
+	out = renderReply("[[GAMBAR:brosur|Untuk pilihan 1× sepekan harganya Rp149.000/bulan]]", s)
+	if out.Images[0].Caption != "Untuk pilihan 1× sepekan harganya Rp149.000/bulan" {
+		t.Fatalf("official price caption rejected: %+v", out)
+	}
+
 	out = renderReply("[[GAMBAR:brosur]]", s)
 	if len(out.Images) != 1 || out.Images[0].Caption != "Caption galeri" {
 		t.Fatalf("backward-compatible default caption broken: %+v", out)
