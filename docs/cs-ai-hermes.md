@@ -532,12 +532,30 @@ sendiri dari kejadian di bridge:
 |---|---|---|
 | Pesan masuk dari calon santri (juga saat AI dijeda atau mati) | `message.in` | Lead dibuat bila belum ada, pesan masuk transkrip, isian form dibaca |
 | Balasan AI, gambar dari AI | `message.out` (`sender=ai`) | Masuk transkrip |
+| Milestone Discovery / Rekomendasi sesudah teks AI benar-benar terkirim | `conversation.stage` (`stage`, `wa_message_id`, `paket_kode` untuk rekomendasi) | Memajukan funnel secara otomatis, tanpa mengurangi tahap yang sudah dicapai |
 | Admin membalas dari HP nomor CS | `message.out` (`sender=admin`) + `ai.paused` | Masuk transkrip, badge "AI dijeda" |
 | AI mengirim `[[FORM]]` | `form.sent` | Tahap → form dikirim |
 | AI mengirim `[[REKENING:1x]]` | `payment_info.sent` (kode paket + harga dari `/cs-ai`) | Tahap → info bayar dikirim, paket dipetakan ke kode kelas |
 | Gambar/dokumen setelah info bayar | `proof.received` | Tahap → bukti masuk, notifikasi ke Keuangan |
 | Handoff ke admin | `handoff` + `ai.paused` | Timeline |
 | `AI ON` / `AI OFF` dari nomor admin | `ai.resumed` / `ai.paused` | Timeline |
+
+Pesan dari nomor admin (`ADMIN_NUMBERS`) tidak dianggap lead.
+
+**Tahap funnel CS AI:** Hermes menulis penanda internal `[[TAHAP:discovery]]` setelah merangkum
+kebutuhan nyata, atau `[[TAHAP:rekomendasi:<kode paket>]]` ketika menawarkan
+paket yang cocok beserta nama dan harga resmi dari pengaturan. Bridge membuang
+penanda dari teks sebelum mengirim. Event baru terbit setelah pesan teks
+benar-benar terkirim; rekomendasi ditolak bila nama/harga paket tidak ada dalam
+pesan terkirim. Dashboard menerima hanya `discovery`/`rekomendasi` dan tidak
+memundurkan tahap. Koreksi manual staf tetap tersedia.
+
+**Caption gambar:** `[[GAMBAR:<kode>|<caption 1 baris>]]` menggunakan caption
+yang dibuat AI sesuai kebutuhan calon santri, maksimal 1000 karakter. Format
+lama `[[GAMBAR:<kode>]]` tetap berfungsi dengan caption galeri. Caption yang
+dikirim sungguhan dicatat sebagai body `message.out` media `gambar` di
+transkrip Dashboard. Jangan memasukkan info harga yang tidak cocok dengan
+pengaturan paket.
 
 Pesan dari nomor admin (`ADMIN_NUMBERS`) tidak dianggap lead.
 
