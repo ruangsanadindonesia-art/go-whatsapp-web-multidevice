@@ -305,6 +305,9 @@ func TestProductKnowledgeDraftApprovalAndPrompt(t *testing.T) {
 		t.Fatal("education missing or unpublished product leaked into AI prompt")
 	}
 	seed.ProductKnowledge[0].Enabled = true
+	// testConfig's short admin number is fine for routing tests but fails
+	// settings validation (9-15 digits).
+	seed.AdminNumbers = []string{"6281111111111"}
 	if err := seed.Validate(); err != nil {
 		t.Fatal(err)
 	}
@@ -333,6 +336,7 @@ func TestProductKnowledgeSettingsAPIAndMigration(t *testing.T) {
 		t.Fatal("API must expose the initial knowledge as an unpublished draft")
 	}
 	s.ProductKnowledge[0].Enabled = true
+	s.AdminNumbers = []string{"6281111111111"} // settings validation needs 9-15 digits
 	raw, _ := json.Marshal(s)
 	rec = adminReq(t, b, http.MethodPut, "/cs-ai/api/settings", bytes.NewReader(raw), "application/json")
 	if rec.Code != http.StatusOK {
