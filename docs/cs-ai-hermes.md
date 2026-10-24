@@ -22,9 +22,10 @@ nilai), dan jadwal/slot pasti. Semua pengaturan bisa diubah di
 7. [Langkah 4 — Sambungkan webhook GOWA ke bridge](#langkah-4--sambungkan-webhook-gowa-ke-bridge)
 8. [Langkah 5 — Uji coba](#langkah-5--uji-coba)
 9. [Langkah 6 — Sambungkan ke CRM Leads Dashboard](#langkah-6--sambungkan-ke-crm-leads-dashboard)
-10. [Pemakaian sehari-hari](#pemakaian-sehari-hari)
-11. [Troubleshooting](#troubleshooting)
-12. [Risiko dan batasan](#risiko-dan-batasan)
+10. [Langkah 7 — Follow-up dari Dashboard](#langkah-7--follow-up-dari-dashboard)
+11. [Pemakaian sehari-hari](#pemakaian-sehari-hari)
+12. [Troubleshooting](#troubleshooting)
+13. [Risiko dan batasan](#risiko-dan-batasan)
 
 ## Cara kerja
 
@@ -607,6 +608,48 @@ curl -s http://172.17.0.1:8650/healthz
 Restart Dashboard setelah mengubah `.env`-nya. Di halaman **Integrasi WhatsApp**,
 peringatan "Ingest mati" hilang dan status bridge/GOWA menjadi hijau. Kirim satu chat
 uji ke nomor CS; lead baru muncul di `/app/leads`.
+
+## Langkah 7 — Follow-up dari Dashboard
+
+Dashboard Fase D dapat meminta **pengiriman pesan teks outbound** yang sudah
+disetujui manusia. Dashboard tidak mengakses device `cs-ai` langsung; bridge
+mengirimnya lewat GOWA dan menambahkan event `message.out` ke antrean CRM.
+
+Endpoint internal: `POST http://172.17.0.1:8650/api/outbound`.
+Jangan proxy endpoint ini lewat domain `wa.ruangsanad.com`.
+Endpoint aktif hanya jika `OUTBOUND_TOKEN` diset. Token harus berbeda dari
+`DASHBOARD_INGEST_TOKEN` dan panjangnya minimal 32 karakter.
+
+**Langkah pemasangan outbound token di kedua file .env Dashboard dan bridge
+secara lengkap ada di [panduan outbound token](panduan-outbound-token-dashboard.md).**
+Ringkasan:
+
+1. Buat satu token baru di VPS: `openssl rand -hex 32`.
+   Jangan memasukkan token ke Git atau membagikannya dalam chat.
+2. Di `/opt/gowa-deploy/cs-bridge.env`: isi
+   `OUTBOUND_TOKEN=<token baru>` dan
+   `OUTBOUND_QUIET_AFTER_INBOUND=2m`. **Jangan** mengganti token ingest.
+3. Di `.env` Dashboard: isi
+   `CS_BRIDGE_URL=http://172.17.0.1:8650` serta
+   `CS_BRIDGE_OUTBOUND_TOKEN=<token yang sama>`.
+4. Setelah approval deploy, jalankan prosedur restart/recreate bridge,
+   lalu cek `curl -fsS http://172.17.0.1:8650/healthz` berisi
+   `"outbound":true`. Restart Dashboard sesuai prosedur runtime.
+5. Gunakan nomor uji milik sendiri yang **sudah pernah chat** ke nomor CS.
+   Ikuti `docs/panduan/crm-followup.md` di repo Dashboard: label
+   `uji-followup`, nyalakan saklar, lalu satu pengiriman yang disetujui.
+6. Pastikan pesan keluar dari nomor CS, transkrip menunjukkan Follow-up,
+   status menjadi Terkirim, dan balasan CS AI memahami isi follow-up.
+
+Pesan outbound tidak dihitung sebagai pesan leads. Saat admin menangani chat
+atau leads masih aktif mengetik/mendapat respons AI, endpoint mengembalikan
+`409 paused` atau `409 busy` agar Dashboard dapat retry. Permintaan
+berulang dengan idempotency key yang sudah terkirim mengembalikan ID lama.
+
+**Batasan:** Hanya teks 1–1000 karakter, tanpa marker `[[`. Hanya chat
+personal yang sudah pernah tercatat oleh bridge. `purpose` yang tersedia:
+`followup` dan `payment_verified`. Pengaturan jadwal, approval staf,
+cap kirim, dan aturan follow-up tetap berada di Dashboard.
 
 ## Pemakaian sehari-hari
 
