@@ -53,6 +53,10 @@ type Config struct {
 	DashboardURL       string
 	DashboardToken     string
 	DashboardOutboxDir string
+
+	// Dashboard-approved text outbound, authenticated separately from ingest.
+	OutboundToken             string
+	OutboundQuietAfterInbound time.Duration
 }
 
 func loadConfig() (Config, error) {
@@ -73,6 +77,7 @@ func loadConfig() (Config, error) {
 		AdminToken:         os.Getenv("ADMIN_TOKEN"),
 		DashboardURL:       strings.TrimRight(strings.TrimSpace(os.Getenv("DASHBOARD_URL")), "/"),
 		DashboardToken:     strings.TrimSpace(os.Getenv("DASHBOARD_INGEST_TOKEN")),
+		OutboundToken:      strings.TrimSpace(os.Getenv("OUTBOUND_TOKEN")),
 		DashboardOutboxDir: env("DASHBOARD_OUTBOX_DIR", "/data/outbox-dashboard"),
 		// No technical wording towards leads (Ruang Sanad CS rules).
 		FallbackMessage: env("FALLBACK_MESSAGE", "Terima kasih, Kak. Pesan Kakak sudah kami terima. Admin akan membalas di chat ini secepatnya."),
@@ -83,6 +88,12 @@ func loadConfig() (Config, error) {
 	}
 
 	var err error
+	if c.OutboundQuietAfterInbound, err = envDuration("OUTBOUND_QUIET_AFTER_INBOUND", 2*time.Minute); err != nil {
+		return c, err
+	}
+	if c.OutboundQuietAfterInbound < 0 {
+		return c, errors.New("OUTBOUND_QUIET_AFTER_INBOUND must not be negative")
+	}
 	if c.HermesTimeout, err = envDuration("HERMES_TIMEOUT", 180*time.Second); err != nil {
 		return c, err
 	}
@@ -138,6 +149,12 @@ func loadConfig() (Config, error) {
 	}
 	if c.DashboardToken != "" && len(c.DashboardToken) < 32 {
 		return c, errors.New("DASHBOARD_INGEST_TOKEN must be at least 32 characters (openssl rand -hex 32)")
+	}
+	if c.OutboundToken != "" && len(c.OutboundToken) < 32 {
+		return c, errors.New("OUTBOUND_TOKEN must be at least 32 characters (openssl rand -hex 32)")
+	}
+	if c.OutboundToken != "" && c.OutboundToken == c.DashboardToken {
+		return c, errors.New("OUTBOUND_TOKEN must differ from DASHBOARD_INGEST_TOKEN")
 	}
 	if c.DashboardURL != "" && !strings.HasPrefix(c.DashboardURL, "http://") && !strings.HasPrefix(c.DashboardURL, "https://") {
 		return c, errors.New("DASHBOARD_URL must start with http:// or https://")
