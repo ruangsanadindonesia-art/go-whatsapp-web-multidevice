@@ -252,7 +252,8 @@ func (s *Settings) Validate() error {
 		for j := range p.PackageCodes {
 			ref := strings.ToLower(strings.TrimSpace(p.PackageCodes[j]))
 			p.PackageCodes[j] = ref
-			if !codes[ref] || seenPackages[ref] {
+			// Drafts may reference old package codes without blocking unrelated settings edits.
+			if (p.Enabled && !codes[ref]) || seenPackages[ref] {
 				add("kode paket %q untuk produk %q tidak ada atau duplikat", ref, p.Code)
 			}
 			seenPackages[ref] = true
