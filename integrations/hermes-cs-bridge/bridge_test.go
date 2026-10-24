@@ -366,7 +366,7 @@ func TestHandoffSummaryIsSeparated(t *testing.T) {
 func TestEmbeddedPrompt(t *testing.T) {
 	cfg := testConfig()
 	cfg.SystemPrompt = defaultSystemPrompt
-	full := buildSystemPrompt(defaultSettings(cfg), "X", time.Now(), false)
+	full := buildSystemPrompt(defaultSettings(cfg), "X", time.Now(), false, nil)
 	for _, want := range []string{"[[HANDOFF:", "[[REKENING:", "[[FORM]]", "Rp149.000", "Rp199.000", "LURC", "CLEAR",
 		"JANGAN pernah menulis sendiri nomor rekening", "emoji"} {
 		if !strings.Contains(full, want) {

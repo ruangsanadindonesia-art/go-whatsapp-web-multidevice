@@ -44,6 +44,7 @@ type chat struct {
 	phone    string
 	timer    *time.Timer
 	firstAt  time.Time
+	lastInbound time.Time
 	hits     []time.Time
 	notified bool // rate-limit notice already sent in this window
 }
@@ -73,11 +74,15 @@ func (b *Bridge) Routes() *http.ServeMux {
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		out := map[string]any{"status": "ok", "paused_chats": len(b.store.ActivePauses(b.now()))}
+		out["outbound"] = b.cfg.OutboundToken != ""
 		if o, ok := b.events.(*DashboardOutbox); ok && o != nil {
 			out["dashboard_pending"] = o.Pending()
 		}
 		_ = json.NewEncoder(w).Encode(out)
 	})
+	if b.cfg.OutboundToken != "" {
+		mux.HandleFunc("POST /api/outbound", b.handleOutbound)
+	}
 	b.adminRoutes(mux)
 	return mux
 }
@@ -226,6 +231,15 @@ func (b *Bridge) handleEvent(ev webhookEvent) {
 	// Every lead message goes to the Dashboard CRM, also while the AI is off
 	// or paused. Admin numbers writing to the CS number are not leads.
 	if !admin {
+		b.store.RememberLeadChat(chatID, now)
+		b.mu.Lock()
+		c, ok := b.chats[chatID]
+		if !ok {
+			c = &chat{}
+			b.chats[chatID] = c
+		}
+		c.lastInbound = now
+		b.mu.Unlock()
 		ref := leadRef{chatID: chatID, phone: phone, name: name}
 		at := messageTime(p, now)
 		b.emit(ref, "message.in", eventIDFor("in", id), at,
@@ -398,7 +412,7 @@ func (b *Bridge) flush(chatID string, c *chat) {
 		defer b.gowa.Typing(context.WithoutCancel(ctx), chatID, false)
 	}
 
-	system := buildSystemPrompt(s, name, now, b.store.PaymentSentRecently(chatID, now))
+	system := buildSystemPrompt(s, name, now, b.store.PaymentSentRecently(chatID, now), b.store.RecentOutbound(chatID, now))
 	reply, err := b.agent.Reply(ctx, b.sessionID(chatID, phone), system, userText)
 	if err != nil {
 		b.log.Error("hermes failed", "chat", chatID, "err", err)
