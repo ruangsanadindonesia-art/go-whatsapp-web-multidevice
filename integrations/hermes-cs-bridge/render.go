@@ -28,6 +28,7 @@ type renderedImage struct {
 }
 
 var (
+	captionPriceRe = regexp.MustCompile(`(?i)rp\.?\s*[0-9][0-9.,]*`)
 	stageRe = regexp.MustCompile(`(?i)\[\[\s*TAHAP\s*:\s*(discovery|rekomendasi)(?:\s*:\s*([a-z0-9_-]+))?\s*\]\]`)
 	formRe     = regexp.MustCompile(`(?i)\[\[\s*FORM\s*\]\]`)
 	rekeningRe = regexp.MustCompile(`(?i)\[\[\s*REKENING\s*(?::\s*([^\]\s]*)\s*)?\]\]`)
@@ -109,7 +110,7 @@ func renderReply(reply string, s Settings) renderedReply {
 			caption := item.Caption
 			if len(parts) > 2 && strings.TrimSpace(parts[2]) != "" {
 				candidate := strings.TrimSpace(parts[2])
-				if len([]rune(candidate)) <= 1000 && !strings.Contains(candidate, "[[") {
+				if len([]rune(candidate)) <= 1000 && !strings.Contains(candidate, "[[") && validCaptionPrices(candidate, s) {
 					caption = toWhatsAppMarkdown(candidate)
 				} else {
 					r.Warnings = append(r.Warnings, "invalid contextual image caption: "+code)
@@ -128,4 +129,33 @@ func renderReply(reply string, s Settings) renderedReply {
 	clean = blankRunRe.ReplaceAllString(clean, "\n\n")
 	r.Text = strings.TrimSpace(clean)
 	return r
+}
+
+// validCaptionPrices prevents hallucinated monetary amounts in dynamic captions.
+// A price mentioned in a caption must match an official configured package.
+func validCaptionPrices(caption string, s Settings) bool {
+	for _, mentioned := range captionPriceRe.FindAllString(caption, -1) {
+		digits := onlyPriceDigits(mentioned)
+		matched := false
+		for _, p := range s.Packages {
+			if digits != "" && digits == onlyPriceDigits(p.Price) {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			return false
+		}
+	}
+	return true
+}
+
+func onlyPriceDigits(s string) string {
+	var b strings.Builder
+	for _, ch := range s {
+		if ch >= '0' && ch <= '9' {
+			b.WriteRune(ch)
+		}
+	}
+	return b.String()
 }
