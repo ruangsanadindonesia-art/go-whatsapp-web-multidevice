@@ -164,6 +164,7 @@ func TestOutboundDebouncePendingAndDisabledAI(t *testing.T) {
 	// Outbound is human-approved and must send even with CS AI globally off.
 	s := b.settings.Get()
 	s.Enabled = false
+	s.AdminNumbers = []string{"6281200001111"} // fixture admin must satisfy settings validation
 	if _, err := b.settings.Update(s, "uji", *clock); err != nil {
 		t.Fatal(err)
 	}
