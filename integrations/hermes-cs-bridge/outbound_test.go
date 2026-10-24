@@ -292,6 +292,15 @@ func TestOutboundGowaFailureMayRetry(t *testing.T) {
 	}
 }
 
+func TestOutboundRefusesSendWhenCRMEventSinkIsOff(t *testing.T) {
+	b, snd, _, _, _ := outboundFixture(t)
+	b.events = nil
+	outboundError(t, sendOutbound(t, b, "Halo", "followup", 55), 502, "send failed")
+	if len(snd.all()) != 0 {
+		t.Fatal("sent an outbound message without Dashboard CRM event delivery")
+	}
+}
+
 func TestOutboundHealthAndTokenConfig(t *testing.T) {
 	b, _, _, _, _ := outboundFixture(t)
 	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)

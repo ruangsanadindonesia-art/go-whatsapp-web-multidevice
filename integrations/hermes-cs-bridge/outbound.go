@@ -84,6 +84,12 @@ func (b *Bridge) handleOutbound(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, http.StatusBadRequest, "marker")
 		return
 	}
+	// Do not send a message the Dashboard cannot receive as a CRM event.
+	// A temporary 502 lets the Dashboard retry after ingest is configured.
+	if b.events == nil {
+		jsonErr(w, http.StatusBadGateway, "send failed")
+		return
+	}
 	// This is an extra anti-broadcast guard: even a token holder cannot send
 	// to arbitrary strangers who never contacted this CS WhatsApp number.
 	if !b.store.HasSeenLeadChat(req.ChatID) {
@@ -141,13 +147,7 @@ func (b *Bridge) handleOutbound(w http.ResponseWriter, r *http.Request) {
 	}
 	b.rememberSent(id)
 	at := b.now()
-	if err := b.store.RecordOutbound(key, req.ChatID, id, req.Text, req.Purpose, at, expiry); err != nil {
-		// A send might have succeeded without a durable state write; do not
-		// pretend this is a successful, idempotent delivery.
-		b.log.Error("outbound sent but persistence failed", "chat", req.ChatID, "purpose", req.Purpose, "reference_id", req.ReferenceID, "wa_message_id", id, "err", err)
-		jsonErr(w, http.StatusBadGateway, "send failed")
-		return
-	}
+	persistErr := b.store.RecordOutbound(key, req.ChatID, id, req.Text, req.Purpose, at, expiry)
 	ref := b.leadFor(req.ChatID)
 	b.emit(ref, "message.out", eventIDFor("out", id), at, map[string]any{
 		"wa_message_id": id,
@@ -156,6 +156,13 @@ func (b *Bridge) handleOutbound(w http.ResponseWriter, r *http.Request) {
 		"reference_id": req.ReferenceID,
 		"purpose": req.Purpose,
 	})
+	if persistErr != nil {
+		// Sending succeeded. Emit the CRM event even if local idempotency
+		// persistence failed; the caller must be alerted to this uncertainty.
+		b.log.Error("outbound sent but persistence failed", "chat", req.ChatID, "purpose", req.Purpose, "reference_id", req.ReferenceID, "wa_message_id", id, "err", persistErr)
+		jsonErr(w, http.StatusBadGateway, "send failed")
+		return
+	}
 	b.log.Info("outbound sent", "chat", req.ChatID, "purpose", req.Purpose, "reference_id", req.ReferenceID, "wa_message_id", id)
 	jsonOut(w, http.StatusOK, map[string]string{"wa_message_id": id})
 }
