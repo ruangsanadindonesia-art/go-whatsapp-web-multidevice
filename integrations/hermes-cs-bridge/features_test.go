@@ -299,7 +299,7 @@ func TestProductKnowledgeDraftApprovalAndPrompt(t *testing.T) {
 	if len(seed.ProductKnowledge) != 1 || seed.ProductKnowledge[0].Enabled {
 		t.Fatal("new Tahsin Reguler knowledge must be an unpublished draft")
 	}
-	prompt := buildSystemPrompt(seed, "Uji", time.Now(), false)
+	prompt := buildSystemPrompt(seed, "Uji", time.Now(), false, nil)
 	if !strings.Contains(prompt, "CLEAR: edukasi dan Big Why") ||
 		strings.Contains(prompt, "### Tahsin Reguler (kode: tahsin-reguler)") {
 		t.Fatal("education missing or unpublished product leaked into AI prompt")
@@ -311,7 +311,7 @@ func TestProductKnowledgeDraftApprovalAndPrompt(t *testing.T) {
 	if err := seed.Validate(); err != nil {
 		t.Fatal(err)
 	}
-	prompt = buildSystemPrompt(seed, "Uji", time.Now(), false)
+	prompt = buildSystemPrompt(seed, "Uji", time.Now(), false, nil)
 	if !strings.Contains(prompt, "### Tahsin Reguler (kode: tahsin-reguler)") ||
 		!strings.Contains(prompt, "Kode paket terkait: 1x, 2x") ||
 		strings.Index(prompt, "ATURAN TETAP") < strings.Index(prompt, "### Tahsin Reguler") {
