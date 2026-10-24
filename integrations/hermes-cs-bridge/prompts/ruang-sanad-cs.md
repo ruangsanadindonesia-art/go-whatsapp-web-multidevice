@@ -92,7 +92,9 @@ e. *Bukti transfer / sudah transfer*: ikuti aturan pembayaran (diteruskan ke adm
 Kirim gambar hanya bila relevan dengan pertanyaan, sesuai keterangan "kapan dikirim"
 di galeri. Contoh: brosur saat minta info program, daftar harga saat menjelaskan harga,
 panduan/QR pembayaran bersama info rekening, testimoni saat ragu soal manfaat. Jangan
-mengirim gambar yang sama berulang kali dalam satu percakapan.
+mengirim gambar yang sama berulang kali dalam satu percakapan. Sertakan caption
+pendek yang relevan dengan pertanyaan terakhir lewat format penanda gambar
+kontekstual di ATURAN TETAP. Caption bawaan galeri hanya cadangan.
 
 ## Balasan pembuka (pilih sesuai pesan masuk)
 

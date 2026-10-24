@@ -8,7 +8,9 @@ import (
 // renderedReply is an AI reply after the bridge replaced its markers.
 type renderedReply struct {
 	Text        string
-	Images      []MediaItem
+	Images      []renderedImage
+	FunnelStage string // discovery or rekomendasi; never shown to the lead
+	FunnelPackage string
 	Handoff     bool
 	Reason      string
 	PaymentSent bool
@@ -18,10 +20,19 @@ type renderedReply struct {
 	Warnings                     []string // unknown codes etc., for the log
 }
 
+// renderedImage binds the selected, approved gallery item to a contextual
+// WhatsApp caption. When the model omits or invalidates it, use the gallery caption.
+type renderedImage struct {
+	MediaItem
+	Caption string
+}
+
 var (
+	captionPriceRe = regexp.MustCompile(`(?i)rp\.?\s*[0-9][0-9.,]*`)
+	stageRe = regexp.MustCompile(`(?i)\[\[\s*TAHAP\s*:\s*(discovery|rekomendasi)(?:\s*:\s*([a-z0-9_-]+))?\s*\]\]`)
 	formRe     = regexp.MustCompile(`(?i)\[\[\s*FORM\s*\]\]`)
 	rekeningRe = regexp.MustCompile(`(?i)\[\[\s*REKENING\s*(?::\s*([^\]\s]*)\s*)?\]\]`)
-	gambarRe   = regexp.MustCompile(`(?i)\[\[\s*GAMBAR\s*:\s*([^\]\s]+)\s*\]\]`)
+	gambarRe   = regexp.MustCompile(`(?i)\[\[\s*GAMBAR\s*:\s*([a-z0-9_-]{1,32})(?:\s*\|\s*([^\]\r\n]*))?\s*\]\]`)
 	anyMarkRe  = regexp.MustCompile(`\[\[[^\]]{0,200}\]\]`)
 	blankRunRe = regexp.MustCompile(`\n{3,}`)
 )
@@ -35,6 +46,28 @@ func renderReply(reply string, s Settings) renderedReply {
 	var r renderedReply
 	clean, reason, handoff := parseHandoff(reply)
 	r.Handoff, r.Reason = handoff, reason
+
+	// Explicit AI milestones are removed before sending. Dashboard changes
+	// stage only after the corresponding WhatsApp message succeeds.
+	clean = stageRe.ReplaceAllStringFunc(clean, func(m string) string {
+		parts := stageRe.FindStringSubmatch(m)
+		stage := strings.ToLower(parts[1])
+		code := strings.ToLower(parts[2])
+		if stage == "discovery" && code == "" {
+			if r.FunnelStage != "rekomendasi" {
+				r.FunnelStage, r.FunnelPackage = stage, ""
+			}
+		} else if stage == "rekomendasi" && code != "" {
+			if _, valid := s.Package(code); valid {
+				r.FunnelStage, r.FunnelPackage = stage, code
+			} else {
+				r.Warnings = append(r.Warnings, "unknown recommendation package: "+code)
+			}
+		} else {
+			r.Warnings = append(r.Warnings, "invalid funnel stage marker")
+		}
+		return ""
+	})
 
 	// Markdown cleanup first, so the official templates are not altered.
 	clean = toWhatsAppMarkdown(clean)
@@ -63,7 +96,8 @@ func renderReply(reply string, s Settings) renderedReply {
 
 	seen := map[string]bool{}
 	clean = gambarRe.ReplaceAllStringFunc(clean, func(m string) string {
-		code := strings.ToLower(gambarRe.FindStringSubmatch(m)[1])
+		parts := gambarRe.FindStringSubmatch(m)
+		code := strings.ToLower(parts[1])
 		item, ok := s.MediaByCode(code)
 		switch {
 		case !ok:
@@ -73,7 +107,16 @@ func renderReply(reply string, s Settings) renderedReply {
 			r.Warnings = append(r.Warnings, "image limit reached, skipped: "+code)
 		default:
 			seen[code] = true
-			r.Images = append(r.Images, item)
+			caption := item.Caption
+			if len(parts) > 2 && strings.TrimSpace(parts[2]) != "" {
+				candidate := strings.TrimSpace(parts[2])
+				if len([]rune(candidate)) <= 1000 && !strings.Contains(candidate, "[[") && validCaptionPrices(candidate, s) {
+					caption = toWhatsAppMarkdown(candidate)
+				} else {
+					r.Warnings = append(r.Warnings, "invalid contextual image caption: "+code)
+				}
+			}
+			r.Images = append(r.Images, renderedImage{MediaItem: item, Caption: caption})
 		}
 		return ""
 	})
@@ -86,4 +129,33 @@ func renderReply(reply string, s Settings) renderedReply {
 	clean = blankRunRe.ReplaceAllString(clean, "\n\n")
 	r.Text = strings.TrimSpace(clean)
 	return r
+}
+
+// validCaptionPrices prevents hallucinated monetary amounts in dynamic captions.
+// A price mentioned in a caption must match an official configured package.
+func validCaptionPrices(caption string, s Settings) bool {
+	for _, mentioned := range captionPriceRe.FindAllString(caption, -1) {
+		digits := onlyPriceDigits(mentioned)
+		matched := false
+		for _, p := range s.Packages {
+			if digits != "" && digits == onlyPriceDigits(p.Price) {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			return false
+		}
+	}
+	return true
+}
+
+func onlyPriceDigits(s string) string {
+	var b strings.Builder
+	for _, ch := range s {
+		if ch >= '0' && ch <= '9' {
+			b.WriteRune(ch)
+		}
+	}
+	return b.String()
 }
