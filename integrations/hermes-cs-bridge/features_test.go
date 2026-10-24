@@ -10,6 +10,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -290,6 +291,79 @@ func TestAdminClearPause(t *testing.T) {
 	}
 	if _, paused := store.PausedUntil(user, time.Now()); paused {
 		t.Fatal("pause not cleared")
+	}
+}
+
+func TestProductKnowledgeDraftApprovalAndPrompt(t *testing.T) {
+	seed := defaultSettings(testConfig())
+	if len(seed.ProductKnowledge) != 1 || seed.ProductKnowledge[0].Enabled {
+		t.Fatal("new Tahsin Reguler knowledge must be an unpublished draft")
+	}
+	prompt := buildSystemPrompt(seed, "Uji", time.Now(), false)
+	if !strings.Contains(prompt, "CLEAR: edukasi dan Big Why") ||
+		strings.Contains(prompt, "### Tahsin Reguler (kode: tahsin-reguler)") {
+		t.Fatal("education missing or unpublished product leaked into AI prompt")
+	}
+	seed.ProductKnowledge[0].Enabled = true
+	if err := seed.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	prompt = buildSystemPrompt(seed, "Uji", time.Now(), false)
+	if !strings.Contains(prompt, "### Tahsin Reguler (kode: tahsin-reguler)") ||
+		!strings.Contains(prompt, "Kode paket terkait: 1x, 2x") ||
+		strings.Index(prompt, "ATURAN TETAP") < strings.Index(prompt, "### Tahsin Reguler") {
+		t.Fatal("published knowledge missing, mapping wrong, or locked rules out of order")
+	}
+	invalid := seed
+	invalid.ProductKnowledge = append([]ProductKnowledge(nil), seed.ProductKnowledge...)
+	invalid.ProductKnowledge[0].PackageCodes = []string{"tidak-ada"}
+	if err := invalid.Validate(); err == nil {
+		t.Fatal("unknown package mapping accepted")
+	}
+}
+
+func TestProductKnowledgeSettingsAPIAndMigration(t *testing.T) {
+	b, _, _ := newTestBridge(t, adminConfig(), &fakeAgent{reply: "x"})
+	rec := adminReq(t, b, http.MethodGet, "/cs-ai/api/settings", nil, "")
+	var s Settings
+	if err := json.Unmarshal(rec.Body.Bytes(), &s); err != nil {
+		t.Fatal(err)
+	}
+	if len(s.ProductKnowledge) != 1 || s.ProductKnowledge[0].Enabled {
+		t.Fatal("API must expose the initial knowledge as an unpublished draft")
+	}
+	s.ProductKnowledge[0].Enabled = true
+	raw, _ := json.Marshal(s)
+	rec = adminReq(t, b, http.MethodPut, "/cs-ai/api/settings", bytes.NewReader(raw), "application/json")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("publish rejected: %d %s", rec.Code, rec.Body)
+	}
+	preview := adminReq(t, b, http.MethodGet, "/cs-ai/api/prompt-preview", nil, "")
+	if !strings.Contains(preview.Body.String(), "### Tahsin Reguler (kode: tahsin-reguler)") {
+		t.Fatal("approved product must appear in prompt preview")
+	}
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "settings.json")
+	old := defaultSettings(testConfig())
+	old.ProductKnowledge = nil
+	old.Packages[0].Price = "Rp165.000"
+	raw, _ = json.Marshal(old)
+	if err := os.WriteFile(path, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	st, err := LoadSettings(path, filepath.Join(dir, "media"), old)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := st.Get()
+	if len(got.ProductKnowledge) != 1 || got.ProductKnowledge[0].Enabled || got.Packages[0].Price != "Rp165.000" {
+		t.Fatal("migration changed existing price or activated unreviewed knowledge")
+	}
+	snapshot := st.Get()
+	snapshot.ProductKnowledge[0].PackageCodes[0] = "changed"
+	if st.Get().ProductKnowledge[0].PackageCodes[0] != "1x" {
+		t.Fatal("Get must deep-copy package mappings")
 	}
 }
 
