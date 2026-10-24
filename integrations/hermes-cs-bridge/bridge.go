@@ -434,11 +434,31 @@ func (b *Bridge) flush(chatID string, c *chat) {
 		out.Handoff, out.Reason = true, "AI tidak memberi jawaban"
 	}
 	ref := leadRef{chatID: chatID, phone: phone, name: name}
+	sentID := ""
 	if out.Text != "" {
-		b.sendLead(ref, out.Text)
+		sentID = b.sendLead(ref, out.Text)
 	}
 	for _, img := range out.Images {
 		b.sendImage(ref, img)
+	}
+	// No automatic funnel movement unless a real WhatsApp text was sent.
+	// Recommendation additionally requires official package name AND price
+	// to be present in the delivered message, not merely a guessed AI marker.
+	if sentID != "" && out.FunnelStage != "" {
+		stage := out.FunnelStage
+		if stage == "rekomendasi" {
+			pkg, ok := s.Package(out.FunnelPackage)
+			message := strings.ToLower(out.Text)
+			if !ok || !strings.Contains(message, strings.ToLower(pkg.Name)) ||
+				!strings.Contains(message, strings.ToLower(pkg.Price)) {
+				stage = ""
+				b.log.Warn("ignored unverified recommendation milestone", "chat", chatID, "package", out.FunnelPackage)
+			}
+		}
+		if stage != "" {
+			b.emit(ref, "conversation.stage", eventIDFor("stage", sentID), b.now(),
+				map[string]any{"stage": stage, "wa_message_id": sentID, "paket_kode": out.FunnelPackage})
+		}
 	}
 	if out.FormSent {
 		b.emit(ref, "form.sent", "", b.now(), map[string]any{})
@@ -599,19 +619,20 @@ func (b *Bridge) send(chatID, text string) string {
 }
 
 // sendLead sends an AI text to a lead and records it in the Dashboard CRM.
-func (b *Bridge) sendLead(ref leadRef, text string) {
+func (b *Bridge) sendLead(ref leadRef, text string) string {
 	id := b.send(ref.chatID, text)
 	if id == "" {
-		return // not delivered, nothing to record
+		return "" // not delivered, nothing to record
 	}
 	b.emit(ref, "message.out", eventIDFor("out", id), b.now(),
 		map[string]any{"wa_message_id": id, "body": text, "sender": "ai"})
+	return id
 }
 
-func (b *Bridge) sendImage(ref leadRef, m MediaItem) {
+func (b *Bridge) sendImage(ref leadRef, m renderedImage) {
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(b.ctx), 60*time.Second)
 	defer cancel()
-	id, err := b.gowa.SendImage(ctx, ref.chatID, m.Caption, b.settings.MediaPath(m), m.ContentType)
+	id, err := b.gowa.SendImage(ctx, ref.chatID, m.Caption, b.settings.MediaPath(m.MediaItem), m.ContentType)
 	if err != nil {
 		b.log.Error("send image failed", "chat", ref.chatID, "image", m.Code, "err", err)
 		return
