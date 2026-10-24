@@ -63,6 +63,7 @@ details summary{cursor:pointer;color:var(--accent);font-size:14px}
   <nav id="tabs">
     <button data-tab="status" class="active">Status</button>
     <button data-tab="data">Paket &amp; Pembayaran</button>
+    <button data-tab="knowledge">Knowledge Produk</button>
     <button data-tab="instr">Instruksi</button>
     <button data-tab="media">Galeri Gambar</button>
     <button data-tab="ops">Operasional</button>
@@ -101,6 +102,15 @@ details summary{cursor:pointer;color:var(--accent);font-size:14px}
       <p class="hint">Dikirim sebelum info pembayaran. Format WhatsApp: <code>*tebal*</code>, <code>_miring_</code>.</p>
       <textarea id="form_text"></textarea>
       <button class="btn" data-reset="form_text">Kembalikan default</button>
+    </div>
+  </section>
+
+  <section id="tab-knowledge">
+    <div class="card">
+      <h2>Knowledge Produk</h2>
+      <p class="hint">Kelola banyak program terpisah dari paket harga. Produk baru berstatus draft dan tidak digunakan AI. Setelah fakta, manfaat, dan Big Why direview, aktifkan dan tekan Simpan. Kode paket harus sesuai tab Paket &amp; Pembayaran.</p>
+      <div id="knowledgeProducts"></div>
+      <button class="btn" id="addKnowledge">+ Tambah produk</button>
     </div>
   </section>
 
@@ -222,7 +232,7 @@ details summary{cursor:pointer;color:var(--accent);font-size:14px}
     numFields.forEach(function(f){ $(f).value = s[f]; });
     $("debounce_seconds").value = (s.debounce_ms || 0) / 1000;
     $("admin_numbers").value = (s.admin_numbers || []).join("\n");
-    renderPackages(); renderMedia();
+    renderPackages(); renderKnowledge(); renderMedia();
     $("updatedInfo").textContent = s.updated_at && s.updated_at.indexOf("0001") !== 0 ? ("Terakhir disimpan " + fmt(s.updated_at) + " oleh " + (s.updated_by || "-")) : "";
     updatePill();
   }
@@ -246,6 +256,69 @@ details summary{cursor:pointer;color:var(--accent);font-size:14px}
     });
   }
   $("addPkg").addEventListener("click", function(){ settings.packages.push({code: "", name: "", price: "", detail: ""}); renderPackages(); markDirty(); });
+
+
+  function renderKnowledge(){
+    var box = $("knowledgeProducts");
+    box.textContent = "";
+    (settings.product_knowledge || []).forEach(function(p, i){
+      function field(key, label, multiline, hint){
+        var wrapper = el("div", {});
+        wrapper.appendChild(el("label", {text: label}));
+        var control = el(multiline ? "textarea" : "input", multiline ? {} : {type:"text"});
+        control.value = p[key] || "";
+        if (hint) control.placeholder = hint;
+        control.addEventListener("input", function(e){
+          settings.product_knowledge[i][key] = e.target.value;
+          markDirty();
+        });
+        wrapper.appendChild(control);
+        return wrapper;
+      }
+      var item = el("div", {"class":"card"});
+      item.appendChild(field("code","Kode unik produk",false,"tahsin-reguler"));
+      item.appendChild(field("name","Nama program",false,"Tahsin Reguler"));
+      item.appendChild(field("audience","Cocok untuk siapa?",true));
+      item.appendChild(field("needs","Situasi/kebutuhan calon santri",true));
+      item.appendChild(field("big_why","Big Why: nilai Al-Qur'an dan alasan personal",true));
+      item.appendChild(field("benefits","Manfaat yang dapat dijelaskan",true));
+      item.appendChild(field("method","Mekanisme/proses belajar",true));
+      item.appendChild(field("evidence","Fakta/bukti terverifikasi (opsional)",true));
+      item.appendChild(field("limitations","Batasan klaim dan hal yang perlu konfirmasi admin",true));
+      var codes = el("div", {});
+      codes.appendChild(el("label", {text:"Kode paket terkait (pisahkan dengan koma)"}));
+      var codesInput = el("input", {type:"text",placeholder:"1x, 2x"});
+      codesInput.value = (p.package_codes || []).join(", ");
+      codesInput.addEventListener("input", function(e){
+        settings.product_knowledge[i].package_codes = e.target.value.split(",").map(function(x){ return x.trim(); }).filter(Boolean);
+        markDirty();
+      });
+      codes.appendChild(codesInput);
+      item.appendChild(codes);
+      var toggle = el("input", {type:"checkbox"});
+      toggle.checked = !!p.enabled;
+      toggle.addEventListener("change", function(e){
+        settings.product_knowledge[i].enabled = e.target.checked;
+        markDirty();
+      });
+      item.appendChild(el("label", {"class":"switch"}, [toggle,el("span",{text:"Aktif untuk AI setelah review"})]));
+      item.appendChild(el("p", {"class":"hint",text:p.enabled ? "Aktif saat perubahan disimpan." : "Draft: tidak masuk ke konteks AI."}));
+      item.appendChild(el("button", {"class":"btn danger",type:"button",text:"Hapus produk",onclick:function(){
+        if (!confirm("Hapus produk " + (p.name || p.code) + "?")) return;
+        settings.product_knowledge.splice(i, 1);
+        renderKnowledge();
+        markDirty();
+      }}));
+      box.appendChild(item);
+    });
+    if (!(settings.product_knowledge || []).length) box.appendChild(el("p",{"class":"hint",text:"Belum ada knowledge produk."}));
+  }
+  $("addKnowledge").addEventListener("click", function(){
+    if (!settings.product_knowledge) settings.product_knowledge = [];
+    settings.product_knowledge.push({code:"",name:"",audience:"",needs:"",big_why:"",benefits:"",method:"",evidence:"",limitations:"",package_codes:[],enabled:false});
+    renderKnowledge();
+    markDirty();
+  });
 
   function renderMedia(){
     var box = $("mediaList"); box.innerHTML = "";
