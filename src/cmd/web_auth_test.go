@@ -71,7 +71,7 @@ func loginCookie(t *testing.T,app *fiber.App) *http.Cookie{
 	require.True(t,csrf.Secure)
 	form:=url.Values{"username":{"owner"},"password":{"correct-password"},"csrf":{csrf.Value}}
 	resp,_:=webCall(t,app,"POST","/auth/login",form,csrf)
-	require.Equal(t,302,resp.StatusCode)
+	require.Equal(t,303,resp.StatusCode)
 	require.Equal(t,"/",resp.Header.Get("Location"))
 	session:=findCookie(t,resp,webSessionCookie)
 	require.True(t,session.HttpOnly)
@@ -84,7 +84,7 @@ func loginCookie(t *testing.T,app *fiber.App) *http.Cookie{
 func TestWebLoginNoBasicPopupAndCookieAuth(t *testing.T){
 	app,_,_:=webTestApp(t)
 	resp,_:=webCall(t,app,"GET","/",nil)
-	require.Equal(t,302,resp.StatusCode)
+	require.Equal(t,303,resp.StatusCode)
 	require.Equal(t,"/login?error=expired",resp.Header.Get("Location"))
 	require.Empty(t,resp.Header.Get("WWW-Authenticate"))
 	resp,_=webCall(t,app,"GET","/devices",nil)
@@ -177,7 +177,7 @@ func TestWebLoginRejectsCSRFAndRateLimits(t *testing.T) {
 		invalid,_:=webCall(t,app,"POST","/auth/login",url.Values{
 			"username":{"owner"},"password":{"wrong"},"csrf":{csrf.Value},
 		},csrf)
-		require.Equal(t,302,invalid.StatusCode)
+		require.Equal(t,303,invalid.StatusCode)
 	}
 	page,_:=webCall(t,app,"GET","/login",nil)
 	csrf:=findCookie(t,page,webCSRFCookie)
@@ -194,10 +194,10 @@ func TestWebLogoutRevokesSession(t *testing.T) {
 	require.Equal(t,200,logoutPage.StatusCode)
 	csrf:=findCookie(t,logoutPage,webCSRFCookie)
 	done,_:=webCall(t,app,"POST","/auth/logout",url.Values{"csrf":{csrf.Value}},session,csrf)
-	require.Equal(t,302,done.StatusCode)
+	require.Equal(t,303,done.StatusCode)
 	require.Equal(t,"/login",done.Header.Get("Location"))
 	resp,_:=webCall(t,app,"GET","/",nil,session)
-	require.Equal(t,302,resp.StatusCode)
+	require.Equal(t,303,resp.StatusCode)
 }
 
 func TestWebSessionWebSocketOrigin(t *testing.T){
@@ -231,6 +231,6 @@ func TestSessionAuthBasePath(t *testing.T){
 	res,err:=app.Test(req)
 	require.NoError(t,err)
 	defer res.Body.Close()
-	require.Equal(t,302,res.StatusCode)
+	require.Equal(t,303,res.StatusCode)
 	require.Equal(t,"/gowa/login?error=expired",res.Header.Get("Location"))
 }
