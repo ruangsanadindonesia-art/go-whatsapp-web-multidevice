@@ -176,6 +176,7 @@ func (b *Bridge) apiDeletePause(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	b.emit(b.leadFor(chatID), "ai.resumed", "", b.now(), map[string]any{"reason": "diaktifkan dari /cs-ai"})
 	b.log.Info("pause cleared from /cs-ai", "chat", chatID, "by", adminUser(r))
 	jsonOut(w, http.StatusOK, map[string]string{"status": "ok"})
 }

@@ -272,3 +272,23 @@ func TestOutboxSplitsLargeBatches(t *testing.T) {
 		t.Fatalf("batches = %v", batches)
 	}
 }
+
+func TestAdminUIResumeReachesDashboard(t *testing.T) {
+	b, _, _ := newTestBridge(t, adminConfig(), &fakeAgent{reply: "ok"})
+	sink := &fakeSink{}
+	b.events = sink
+	if err := b.store.SetPause(user, b.now().Add(time.Hour), "admin menangani"); err != nil {
+		t.Fatal(err)
+	}
+	rec := adminReq(t, b, http.MethodDelete, "/cs-ai/api/pauses/"+user, nil, "")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("resume returned %d: %s", rec.Code, rec.Body.String())
+	}
+	if _, paused := b.store.PausedUntil(user, b.now()); paused {
+		t.Fatal("chat remains paused")
+	}
+	events := sink.find("ai.resumed")
+	if len(events) != 1 || events[0].ChatID != user || events[0].OccurredAt != b.now().UTC().Format(time.RFC3339) {
+		t.Fatalf("resume events = %+v", events)
+	}
+}
