@@ -15,7 +15,7 @@ jobs:
           cache: false
       - name: Targeted authentication tests
         working-directory: src
-        run: go test -tags purego ./cmd -run 'Test(Web|Session)' -count=1
+        run: go test -tags purego ./cmd -count=1
       - name: Static analysis
         working-directory: src
         run: go vet -tags purego ./cmd
