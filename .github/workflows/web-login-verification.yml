@@ -19,3 +19,14 @@ jobs:
       - name: Static analysis
         working-directory: src
         run: go vet -tags purego ./cmd
+      - name: Format preview for code review
+        run: |
+          gofmt -w src/cmd/web_auth.go src/cmd/web_auth_test.go
+          echo 'GOWA_FORMAT:web_auth.go:BEGIN'
+          base64 -w0 src/cmd/web_auth.go
+          echo
+          echo 'GOWA_FORMAT:web_auth.go:END'
+          echo 'GOWA_FORMAT:web_auth_test.go:BEGIN'
+          base64 -w0 src/cmd/web_auth_test.go
+          echo
+          echo 'GOWA_FORMAT:web_auth_test.go:END'
