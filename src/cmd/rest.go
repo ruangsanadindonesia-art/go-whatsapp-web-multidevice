@@ -138,8 +138,20 @@ func restServer(_ *cobra.Command, _ []string) {
 			account[ba[0]] = ba[1]
 		}
 
+		// Human browsers use durable HttpOnly sessions; machine/API clients
+		// continue using their existing Basic Auth credentials.
+		sessionStore, err := openWebSessionStore(defaultWebSessionDB())
+		if err != nil {
+			logrus.Fatalln("Failed to open browser session database: ", err.Error())
+		}
+		defer func() {
+			if err := sessionStore.Close(); err != nil {
+				logrus.Warnf("web session database close: %v", err)
+			}
+		}()
+		registerWebLogin(app, account, sessionStore, config.AppBasePath)
 		app.Use(middleware.WebsocketQueryAuth())
-		app.Use(newBasicAuthMiddleware(account))
+		app.Use(newWebOrBasicAuthMiddleware(account, sessionStore, config.AppBasePath))
 		if len(config.AppBasicAuthDevices) > 0 {
 			app.Use(newDeviceScopeMiddleware(config.AppBasicAuthDevices, config.AppBasePath, func(id string) (string, bool) {
 				if strings.TrimSpace(id) == "" {

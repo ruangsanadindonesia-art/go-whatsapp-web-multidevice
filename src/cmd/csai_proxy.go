@@ -6,7 +6,6 @@ import (
 
 	"github.com/aldinokemal/go-whatsapp-web-multidevice/config"
 	"github.com/gofiber/fiber/v3"
-	"github.com/gofiber/fiber/v3/middleware/basicauth"
 	"github.com/gofiber/fiber/v3/middleware/proxy"
 	"github.com/sirupsen/logrus"
 )
@@ -40,7 +39,7 @@ func newCSAIProxyHandler(target, token, basePath string) fiber.Handler {
 		h.Del(fiber.HeaderAuthorization) // never forward the GOWA password
 		h.Del(fiber.HeaderCookie)
 		h.Set("X-CS-AI-Token", token)
-		h.Set("X-CS-AI-User", basicauth.UsernameFromContext(c))
+		h.Set("X-CS-AI-User", authUsername(c))
 
 		if err := proxy.DoTimeout(c, upstream, csAIProxyTimeout); err != nil {
 			logrus.Warnf("[CS_AI] bridge unreachable at %s: %v", target, err)
