@@ -78,6 +78,8 @@ func loginCookie(t *testing.T, app *fiber.App) *http.Cookie {
 	page, html := webCall(t, app, "GET", "/login", nil)
 	require.Equal(t, 200, page.StatusCode)
 	require.Contains(t, html, "Masuk ke GoWA")
+	require.Equal(t, "same-origin", page.Header.Get("Referrer-Policy"))
+	require.Contains(t, html, `<meta name="referrer" content="same-origin">`)
 	require.NotContains(t, html, "correct-password")
 	csrf := findCookie(t, page, webCSRFCookie)
 	require.True(t, csrf.Secure)
@@ -202,14 +204,39 @@ func TestWebLoginRejectsCSRFAndRateLimits(t *testing.T) {
 func TestWebLogoutRevokesSession(t *testing.T) {
 	app, _, _ := webTestApp(t)
 	session := loginCookie(t, app)
-	logoutPage, _ := webCall(t, app, "GET", "/logout", nil, session)
+	logoutPage, logoutHTML := webCall(t, app, "GET", "/logout", nil, session)
 	require.Equal(t, 200, logoutPage.StatusCode)
+	require.Equal(t, "same-origin", logoutPage.Header.Get("Referrer-Policy"))
+	require.Contains(t, logoutHTML, `<meta name="referrer" content="same-origin">`)
 	csrf := findCookie(t, logoutPage, webCSRFCookie)
 	done, _ := webCall(t, app, "POST", "/auth/logout", url.Values{"csrf": {csrf.Value}}, session, csrf)
 	require.Equal(t, 303, done.StatusCode)
 	require.Equal(t, "/login", done.Header.Get("Location"))
 	resp, _ := webCall(t, app, "GET", "/", nil, session)
 	require.Equal(t, 303, resp.StatusCode)
+}
+
+func TestWebLoginRejectsUntrustedOriginsWithValidCSRF(t *testing.T) {
+	app, _, _ := webTestApp(t)
+	for _, origin := range []string{"null", "https://foreign.example", "http://" + authTestHost} {
+		t.Run(origin, func(t *testing.T) {
+			page, _ := webCall(t, app, "GET", "/login", nil)
+			csrf := findCookie(t, page, webCSRFCookie)
+			form := url.Values{"username": {"owner"}, "password": {"correct-password"}, "csrf": {csrf.Value}}
+			req := httptest.NewRequest("POST", "https://"+authTestHost+"/auth/login", strings.NewReader(form.Encode()))
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			req.Header.Set("Origin", origin)
+			req.Header.Set("Sec-Fetch-Site", "same-origin")
+			req.AddCookie(csrf)
+			resp, err := app.Test(req)
+			require.NoError(t, err)
+			defer resp.Body.Close()
+			require.Equal(t, http.StatusForbidden, resp.StatusCode)
+			for _, cookie := range resp.Cookies() {
+				require.NotEqual(t, webSessionCookie, cookie.Name)
+			}
+		})
+	}
 }
 
 func TestWebSessionWebSocketOrigin(t *testing.T) {

@@ -30,6 +30,9 @@ const (
 	webLoginLimit      = 10
 	webLoginWindow     = 15 * time.Minute
 	webAuthUserKey     = "gowa.auth.username"
+	// Preserve Origin on same-origin form POSTs. With no-referrer, browsers
+	// send Origin: null and safeSameOrigin correctly rejects login and logout.
+	webReferrerPolicy = "same-origin"
 )
 
 const webSessionSchema = `
@@ -215,7 +218,7 @@ func webLoginHTML(action, csrf, errorCode string, logout bool) string {
 		notice = `<div class="notice" role="alert">` + html.EscapeString(notice) + `</div>`
 	}
 	return `<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="referrer" content="no-referrer"><title>` + html.EscapeString(title) + ` | Ruang Sanad</title>
+<meta name="referrer" content="` + webReferrerPolicy + `"><title>` + html.EscapeString(title) + ` | Ruang Sanad</title>
 <style>
 :root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#18342f;background:#f7f1e6}
 *{box-sizing:border-box}body{margin:0;min-height:100svh;display:grid;place-items:center;padding:24px;background:radial-gradient(ellipse at top,#e9d9b9,#f7f1e6 65%)}
@@ -266,7 +269,7 @@ func registerWebLogin(app *fiber.App, accounts map[string]string, store *webSess
 		c.Set("Cache-Control", "no-store")
 		c.Set("X-Content-Type-Options", "nosniff")
 		c.Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'")
-		c.Set("Referrer-Policy", "no-referrer")
+		c.Set("Referrer-Policy", webReferrerPolicy)
 		tok, err := secureRandomToken()
 		if err != nil {
 			return c.SendStatus(fiber.StatusInternalServerError)
