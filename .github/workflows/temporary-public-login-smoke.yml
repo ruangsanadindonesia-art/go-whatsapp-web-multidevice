@@ -1,0 +1,51 @@
+name: Temporary Public Web Login Smoke
+on:
+  push:
+    branches: [verify/gowa-login-public-smoke-20261025]
+permissions:
+  contents: read
+jobs:
+  public-login:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read-only production HTTP login smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          base=https://wa.ruangsanad.com
+          req () {
+            local path="$1"
+            curl --silent --show-error --max-time 20 --retry 1 \
+              -D /tmp/gowa-headers -o /tmp/gowa-body \
+              -w '%{http_code}' "$base$path"
+          }
+          code="$(req /)"
+          echo "GET / => HTTP $code"
+          test "$code" = 303 || test "$code" = 302
+          if grep -iq '^www-authenticate:' /tmp/gowa-headers; then
+            echo "FAIL: browser Basic challenge was returned"
+            exit 1
+          fi
+          if ! grep -Eiq '^location: (https://wa.ruangsanad.com)?/login(\?|\r|$)' /tmp/gowa-headers; then
+            echo "FAIL: expected redirect to the GoWA login page"
+            exit 1
+          fi
+          code="$(req /login)"
+          echo "GET /login => HTTP $code"
+          test "$code" = 200
+          grep -q 'Masuk ke GoWA' /tmp/gowa-body
+          if grep -iq '^www-authenticate:' /tmp/gowa-headers; then
+            echo "FAIL: login page must not issue a browser Basic challenge"
+            exit 1
+          fi
+          code="$(req /devices)"
+          echo "GET /devices => HTTP $code"
+          test "$code" = 401
+          if grep -iq '^www-authenticate:' /tmp/gowa-headers; then
+            echo "FAIL: public API requests must not popup Basic challenge"
+            exit 1
+          fi
+          code="$(req /cs-ai)"
+          echo "GET /cs-ai => HTTP $code"
+          test "$code" = 303 || test "$code" = 302
+          echo "PUBLIC_LOGIN_SMOKE=PASS"
