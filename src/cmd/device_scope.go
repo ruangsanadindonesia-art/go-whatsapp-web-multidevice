@@ -11,7 +11,6 @@ import (
 	"github.com/aldinokemal/go-whatsapp-web-multidevice/pkg/utils"
 	"github.com/aldinokemal/go-whatsapp-web-multidevice/ui/rest/middleware"
 	"github.com/gofiber/fiber/v3"
-	"github.com/gofiber/fiber/v3/middleware/basicauth"
 )
 
 // Device-scoped Basic Auth accounts (APP_BASIC_AUTH_DEVICES).
@@ -142,7 +141,7 @@ func newDeviceScopeMiddleware(scopes map[string][]string, basePath string, resol
 	}
 
 	return func(c fiber.Ctx) error {
-		user := basicauth.UsernameFromContext(c)
+		user := authUsername(c)
 		devices, restricted := scopes[user]
 		if !restricted {
 			return c.Next()
