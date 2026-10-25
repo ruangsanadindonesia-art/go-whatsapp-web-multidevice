@@ -1,0 +1,21 @@
+name: Temporary Web Login Verification
+on:
+  push:
+    branches: [feature/gowa-ui-web-login-14d]
+permissions:
+  contents: read
+jobs:
+  auth-verification:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: src/go.mod
+          cache: false
+      - name: Targeted authentication tests
+        working-directory: src
+        run: go test -tags purego ./cmd -run 'Test(Web|Session)' -count=1
+      - name: Static analysis
+        working-directory: src
+        run: go vet -tags purego ./cmd
