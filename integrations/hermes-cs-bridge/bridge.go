@@ -26,7 +26,8 @@ type Bridge struct {
 	agent    Agent
 	store    *Store
 	settings *SettingsStore
-	events   EventSink // lead events for the Dashboard CRM; nil = off
+	events   EventSink    // lead events for the Dashboard CRM; nil = off
+	jadwal   JadwalSource // class schedules from the Dashboard; nil = off
 	log      *slog.Logger
 	now      func() time.Time
 	ctx      context.Context
@@ -77,6 +78,10 @@ func (b *Bridge) Routes() *http.ServeMux {
 		out["outbound"] = b.cfg.OutboundToken != ""
 		if o, ok := b.events.(*DashboardOutbox); ok && o != nil {
 			out["dashboard_pending"] = o.Pending()
+		}
+		if list, at, ok := b.jadwalList(); ok {
+			out["jadwal"] = len(list)
+			out["jadwal_fetched_at"] = at.UTC().Format(time.RFC3339)
 		}
 		_ = json.NewEncoder(w).Encode(out)
 	})
@@ -412,7 +417,8 @@ func (b *Bridge) flush(chatID string, c *chat) {
 		defer b.gowa.Typing(context.WithoutCancel(ctx), chatID, false)
 	}
 
-	system := buildSystemPrompt(s, name, now, b.store.PaymentSentRecently(chatID, now), b.store.RecentOutbound(chatID, now))
+	jadwal, _, jadwalOK := b.jadwalList()
+	system := buildSystemPromptJadwal(s, name, now, b.store.PaymentSentRecently(chatID, now), b.store.RecentOutbound(chatID, now), jadwal, jadwalOK)
 	reply, err := b.agent.Reply(ctx, b.sessionID(chatID, phone), system, userText)
 	if err != nil {
 		b.log.Error("hermes failed", "chat", chatID, "err", err)
@@ -460,6 +466,16 @@ func (b *Bridge) flush(chatID string, c *chat) {
 				map[string]any{"stage": stage, "wa_message_id": sentID, "paket_kode": out.FunnelPackage})
 		}
 	}
+	if out.JadwalKode != "" {
+		// Recorded only when the reply really went out and the schedule is
+		// one the Dashboard currently offers.
+		if _, ok := jadwalByKode(jadwal, out.JadwalKode); !ok {
+			b.log.Warn("ignored unknown schedule marker", "chat", chatID, "jadwal", out.JadwalKode)
+		} else if sentID != "" {
+			b.emit(ref, "schedule.selected", eventIDFor("jadwal", sentID), b.now(),
+				map[string]any{"jadwal_kode": out.JadwalKode, "wa_message_id": sentID})
+		}
+	}
 	if out.FormSent {
 		b.emit(ref, "form.sent", "", b.now(), map[string]any{})
 	}
@@ -471,6 +487,14 @@ func (b *Bridge) flush(chatID string, c *chat) {
 	if out.Handoff {
 		b.handoff(chatID, phone, name, userText, out.Reason)
 	}
+}
+
+// jadwalList returns the schedules for the prompt (ok=false when unknown).
+func (b *Bridge) jadwalList() ([]Jadwal, time.Time, bool) {
+	if b.jadwal == nil {
+		return nil, time.Time{}, false
+	}
+	return b.jadwal.Jadwal()
 }
 
 func orDash(s string) string {

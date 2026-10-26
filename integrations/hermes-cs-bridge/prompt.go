@@ -27,6 +27,12 @@ var educationPrompt string
 // buildSystemPrompt assembles what Hermes receives on every CS turn:
 // editable instructions + data from settings + locked rules + sender context.
 func buildSystemPrompt(s Settings, senderName string, now time.Time, paymentSent bool, last *OutboundNote) string {
+	return buildSystemPromptJadwal(s, senderName, now, paymentSent, last, nil, false)
+}
+
+// buildSystemPromptJadwal is buildSystemPrompt plus the class schedules from
+// the Dashboard (ok=false: no schedule data available).
+func buildSystemPromptJadwal(s Settings, senderName string, now time.Time, paymentSent bool, last *OutboundNote, jadwal []Jadwal, jadwalOK bool) string {
 	var b strings.Builder
 	b.WriteString(strings.TrimSpace(s.Instructions))
 
@@ -62,6 +68,7 @@ func buildSystemPrompt(s Settings, senderName string, now time.Time, paymentSent
 		}
 		fmt.Fprintf(&b, "- kode `%s`: *%s* — %s%s\n", p.Code, p.Name, p.Price, detail)
 	}
+	writeJadwalPrompt(&b, jadwal, jadwalOK)
 	b.WriteString("\nForm pendaftaran: kirim dengan [[FORM]]. Isinya meminta:\n")
 	for _, line := range strings.Split(s.FormText, "\n") {
 		if t := strings.TrimSpace(line); strings.HasPrefix(t, "*") || strings.HasPrefix(t, "-") || strings.HasPrefix(t, "•") {

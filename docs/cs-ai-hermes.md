@@ -669,6 +669,44 @@ personal yang sudah pernah tercatat oleh bridge. `purpose` yang tersedia:
 `followup` dan `payment_verified`. Pengaturan jadwal, approval staf,
 cap kirim, dan aturan follow-up tetap berada di Dashboard.
 
+## Langkah 8 — Jadwal kelas dari Dashboard
+
+Jadwal yang ditawarkan CS AI diisi di Dashboard, menu **Akademik → Jadwal
+Penawaran** (`/app/jadwal-penawaran`). Admin Kelas mengubah jadwal, CS hanya
+melihat. Tidak ada pengaturan jadwal di halaman `/cs-ai`.
+
+Cara kerjanya:
+
+1. Setiap 2 menit bridge mengambil `GET <DASHBOARD_URL>/integrations/cs-ai/jadwal`
+   dengan `DASHBOARD_INGEST_TOKEN` yang sama. Tidak ada env baru.
+2. Jadwal yang dibuka masuk ke prompt. AI hanya melihat "tersedia" atau "PENUH"
+   per ikhwan/akhwat, tidak melihat jumlah kursi.
+3. Dari jawaban calon santri AI menentukan levelnya: belum lancar membaca berarti
+   level 1, sudah lancar berarti level 2. Jadwal tanpa level terbuka untuk semua
+   level. AI hanya menawarkan jadwal yang cocok dengan level, paket (1x/2x), dan
+   gendernya.
+4. Begitu calon santri memilih, AI menulis `[[JADWAL:<kode>]]`. Bridge mengirim
+   event `schedule.selected`, dan jadwal itu tercatat di lead (bisa diubah CS di
+   halaman lead).
+5. Kuota (default 10 per gender) dihitung saat pembayaran diverifikasi. Jadwal
+   yang penuh untuk gender tertentu tidak ditawarkan ke gender itu. Gunakan
+   **Periode baru** saat angkatan berikutnya dibuka agar hitungan kembali dari 0.
+6. Admin Kelas menerima notifikasi "Santri baru" berisi jadwal pilihan untuk
+   dikonfirmasi saat penempatan.
+
+Kalau Dashboard tidak bisa dihubungi, bridge memakai daftar terakhir yang tersimpan
+di `/data/jadwal-cache.json`. Kalau daftar itu juga belum ada, AI tidak menyebut
+jadwal dan mengalihkan pertanyaan jadwal ke admin.
+
+Cek: `curl -s http://172.17.0.1:8650/healthz` harus memuat `"jadwal":<jumlah>`.
+Kalau tidak ada, cek log bridge (`jadwal: refresh failed`). Penyebab umumnya
+Dashboard belum di-update (HTTP 404) atau tokennya salah (HTTP 401).
+
+Prompt instruksi di `/cs-ai` yang sudah tersimpan di server tidak ikut berubah.
+Aturan jadwal ada di aturan tetap, jadi tetap berlaku. Kalau instruksi Anda masih
+berisi "jadwal pasti diatur admin kelas", ganti kalimat itu supaya tidak
+membingungkan AI.
+
 ## Pemakaian sehari-hari
 
 | Kebutuhan | Cara |

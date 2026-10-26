@@ -163,7 +163,8 @@ func (b *Bridge) apiStatus(w http.ResponseWriter, r *http.Request) {
 
 func (b *Bridge) apiPromptPreview(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	_, _ = io.WriteString(w, buildSystemPrompt(b.settings.Get(), "Contoh Nama", b.now(), false, nil))
+	jadwal, _, jadwalOK := b.jadwalList()
+	_, _ = io.WriteString(w, buildSystemPromptJadwal(b.settings.Get(), "Contoh Nama", b.now(), false, nil, jadwal, jadwalOK))
 }
 
 func (b *Bridge) apiDeletePause(w http.ResponseWriter, r *http.Request) {
