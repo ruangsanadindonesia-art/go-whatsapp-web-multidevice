@@ -62,6 +62,10 @@ func main() {
 	} else {
 		log.Warn("DASHBOARD_URL or DASHBOARD_INGEST_TOKEN is empty; leads are not sent to the Dashboard CRM")
 	}
+	if jc := NewJadwalClient(cfg, log); jc != nil {
+		bridge.jadwal = jc
+		go jc.Run(ctx)
+	}
 	srv := &http.Server{Addr: cfg.ListenAddr, Handler: bridge.Routes(), ReadHeaderTimeout: 10 * time.Second}
 
 	go func() {

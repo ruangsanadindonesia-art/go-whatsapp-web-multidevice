@@ -15,6 +15,9 @@ type renderedReply struct {
 	Reason      string
 	PaymentSent bool
 	FormSent    bool
+	// JadwalKode is the schedule the calon santri chose ([[JADWAL:<kode>]]);
+	// the bridge checks it against the open schedules before recording it.
+	JadwalKode string
 	// Package code and price of the last [[REKENING]] (for the Dashboard CRM).
 	PaymentPaket, PaymentNominal string
 	Warnings                     []string // unknown codes etc., for the log
@@ -31,6 +34,7 @@ var (
 	captionPriceRe = regexp.MustCompile(`(?i)rp\.?\s*[0-9][0-9.,]*`)
 	stageRe = regexp.MustCompile(`(?i)\[\[\s*TAHAP\s*:\s*(discovery|rekomendasi)(?:\s*:\s*([a-z0-9_-]+))?\s*\]\]`)
 	formRe     = regexp.MustCompile(`(?i)\[\[\s*FORM\s*\]\]`)
+	jadwalRe   = regexp.MustCompile(`(?i)\[\[\s*JADWAL\s*:\s*([a-z0-9-]{2,40})\s*\]\]`)
 	rekeningRe = regexp.MustCompile(`(?i)\[\[\s*REKENING\s*(?::\s*([^\]\s]*)\s*)?\]\]`)
 	gambarRe   = regexp.MustCompile(`(?i)\[\[\s*GAMBAR\s*:\s*([a-z0-9_-]{1,32})(?:\s*\|\s*([^\]\r\n]*))?\s*\]\]`)
 	anyMarkRe  = regexp.MustCompile(`\[\[[^\]]{0,200}\]\]`)
@@ -66,6 +70,12 @@ func renderReply(reply string, s Settings) renderedReply {
 		} else {
 			r.Warnings = append(r.Warnings, "invalid funnel stage marker")
 		}
+		return ""
+	})
+
+	// Schedule choice: internal marker, never shown. The last one wins.
+	clean = jadwalRe.ReplaceAllStringFunc(clean, func(m string) string {
+		r.JadwalKode = strings.ToLower(jadwalRe.FindStringSubmatch(m)[1])
 		return ""
 	})
 
