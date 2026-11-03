@@ -35,7 +35,8 @@ func registerPrivateAPIKeyAdmin(router fiber.Router, store *privateAPIStore, bac
 		_, canonical, err := backend.Resolve(c.Context(),requested)
 		if err != nil || canonical == "" { return c.Status(400).SendString("device_id tidak ditemukan") }
 		allowGroup := c.FormValue("allow_group") == "yes"
-		key, raw, err := store.Create(c.Context(),name,canonical,allowGroup)
+		grants := privateAPIToolGrants{REST: c.FormValue("allow_rest_tools") == "yes", MCP: c.FormValue("allow_mcp_tools") == "yes"}
+		key, raw, err := store.Create(c.Context(),name,canonical,allowGroup,grants)
 		if err != nil { return c.Status(400).SendString("Nama integrasi atau perangkat tidak valid") }
 		// Never redirect with the secret in a URL or persist the raw key.
 		// Escaping and no-store protect the one-time view.
