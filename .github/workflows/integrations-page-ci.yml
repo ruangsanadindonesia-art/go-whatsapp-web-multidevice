@@ -20,9 +20,8 @@ jobs:
         with:
           go-version-file: src/go.mod
           cache-dependency-path: src/go.sum
-      - name: Verify formatting
-        run: |
-          test -z "$(gofmt -l src/cmd/integrations_page.go src/cmd/integrations_page_test.go)"
+      - name: Parse Go source
+        run: gofmt -e src/cmd/integrations_page.go src/cmd/integrations_page_test.go > /dev/null
       - name: Verify integration management and route order
         working-directory: src
         run: go test ./cmd -run 'TestIntegrationsPage|TestDeviceGroupIsRegisteredLast' -count=1
