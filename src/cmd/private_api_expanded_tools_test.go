@@ -186,3 +186,32 @@ func TestPrivateToolSchemaUpgradeOldSQLite(t *testing.T) {
   t.Fatalf("migration should retain default-deny: %v %v %+v",valid,err,key)
  }
 }
+
+
+func TestPrivateLegacyRESTSendRateLimit(t *testing.T) {
+ previous:=config.AppBasicAuthCredential
+ config.AppBasicAuthCredential=[]string{"admin:example"}
+ t.Cleanup(func(){config.AppBasicAuthCredential=previous})
+ store,err:=openPrivateAPIStore(filepath.Join(t.TempDir(),"rate.db"))
+ if err!=nil {t.Fatal(err)}
+ defer store.Close()
+ _,token,err:=store.Create(context.Background(),"rate-test","dev-one",false,privateAPIToolGrants{REST:true})
+ if err!=nil {t.Fatal(err)}
+ backend:=privateAPIBackend{Resolve:func(ctx context.Context,id string)(context.Context,string,error){
+  return ctx,"dev-one",nil
+ }}
+ app:=fiber.New()
+ app.Use(newPrivateLegacyToolAuth(store,backend,""))
+ app.Use(func(c fiber.Ctx)error{return c.SendStatus(200)})
+ for i:=0;i<31;i++ {
+  req:=httptest.NewRequest("POST","/send/message",strings.NewReader("{\"phone\":\"628123456789\",\"message\":\"hello\"}"))
+  req.Header.Set("Authorization","Bearer "+token)
+  req.Header.Set("Content-Type","application/json")
+  resp,err:=app.Test(req)
+  if err!=nil {t.Fatal(err)}
+  _=resp.Body.Close()
+  want:=200
+  if i==30 {want=429}
+  if resp.StatusCode!=want {t.Fatalf("request %d got %d, expected %d",i+1,resp.StatusCode,want)}
+ }
+}
