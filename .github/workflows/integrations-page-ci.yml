@@ -26,3 +26,6 @@ jobs:
       - name: Verify integration management and route order
         working-directory: src
         run: go test ./cmd -run 'TestPrivateAPI|TestIntegrationsPage|TestDeviceGroupIsRegisteredLast' -count=1
+      - name: Related cmd regression
+        working-directory: src
+        run: go test ./cmd -count=1
