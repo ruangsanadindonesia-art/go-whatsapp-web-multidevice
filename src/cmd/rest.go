@@ -225,6 +225,9 @@ func restServer(_ *cobra.Command, _ []string) {
 	defer uiCancel()
 	registerUIRoute(apiGroup, uiCtx)
 
+	// Authenticated, fail-closed API/MCP integration overview (not device-scoped).
+	registerIntegrationsPage(apiGroup)
+
 	// CS AI settings page, proxied to hermes-cs-bridge (no-op unless configured).
 	registerCSAIProxy(apiGroup)
 
