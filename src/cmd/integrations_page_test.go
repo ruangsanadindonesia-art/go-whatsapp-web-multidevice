@@ -93,6 +93,14 @@ func TestIntegrationsPageDisplaysRealStateWithoutSecrets(t *testing.T) {
 			response.Header.Get("Cache-Control") != "no-store" {
 			t.Fatalf("%s: missing page security headers", tc.path)
 		}
+		// Browser POST forms for create/revoke must preserve the same-origin
+		// signal. "no-referrer" can make Origin null and cause 403.
+		if policy := response.Header.Get("Referrer-Policy"); policy != webReferrerPolicy {
+			t.Fatalf("%s: referrer policy %q; want %q for same-origin admin forms", tc.path, policy, webReferrerPolicy)
+		}
+		if tc.path == "/integrations" && !strings.Contains(body, "action=\"/integrations/keys\"") {
+			t.Fatal("integrations page missing API key form")
+		}
 	}
 }
 
