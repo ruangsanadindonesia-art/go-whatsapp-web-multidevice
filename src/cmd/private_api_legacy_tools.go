@@ -98,26 +98,33 @@ func privateLegacyWritesToGroup(c fiber.Ctx,route string) bool {
  }
  // Only send-like routes require a recipient. Group management routes are
  // already restricted by the CanGroup capability above.
- if !strings.HasPrefix(route,"/send/") && !strings.HasPrefix(route,"/message/") {
+ if !strings.HasPrefix(route,"/send/") && !strings.HasPrefix(route,"/message/") &&
+    !strings.HasPrefix(route,"/chat/") {
   return false
  }
- if strings.HasPrefix(route,"/send/schedules/") { return false }
- var phone string
+ // A schedule resume may trigger a previously configured group send,
+ // whose recipient is not in this request. Require the group grant.
+ if strings.HasPrefix(route,"/send/schedules/") { return true }
+ var phone, chatJID string
  kind:=strings.ToLower(strings.TrimSpace(c.Get("Content-Type")))
  if strings.HasPrefix(kind,"application/json") {
-  var request struct {Phone string `json:"phone"`}
+  var request struct {
+   Phone string `json:"phone"`
+   ChatJID string `json:"chat_jid"`
+  }
   if err:=json.Unmarshal(c.Body(),&request);err!=nil { return true }
-  phone=request.Phone
+  phone, chatJID = request.Phone,request.ChatJID
  } else if strings.HasPrefix(kind,"application/x-www-form-urlencoded") ||
    strings.HasPrefix(kind,"multipart/form-data") {
-  phone=c.FormValue("phone")
+  phone, chatJID=c.FormValue("phone"),c.FormValue("chat_jid")
  } else {
   return true
  }
- // A missing recipient is only tolerated for schedule-management routes;
- // most send/message mutations require one. Deny to avoid unreviewed aliases.
- if phone=="" { return true }
- return strings.HasSuffix(phone,"@g.us") || strings.HasSuffix(phone,"@newsletter") ||
-  phone=="status@broadcast" || strings.HasSuffix(phone,"@broadcast")
+ target:=phone
+ if target=="" {target=chatJID}
+ // Don't guess the recipient when the request structure changes.
+ if target=="" { return true }
+ return strings.HasSuffix(target,"@g.us") || strings.HasSuffix(target,"@newsletter") ||
+  target=="status@broadcast" || strings.HasSuffix(target,"@broadcast")
 }
 
