@@ -16,8 +16,31 @@ info:
       Authorization header on WebSocket connections, so also pass
       `&authorization=<base64(user:pass)>` in the query string. Use TLS in
       production since the credential is visible in the URL.
+
+    Authentication:
+    - `basicAuth`: the GoWA account from `APP_BASIC_AUTH` (admins, internal
+      services such as the CS AI bridge). Accounts listed in
+      `APP_BASIC_AUTH_DEVICES` are limited to messaging on their own devices.
+    - `apiKeyBearer`: a private API key (`gwa_...`) created at `/integrations`
+      (tab API). Send `Authorization: Bearer <key>`. A key is bound to ONE
+      device, expires after 90 days and can be revoked from that page.
+      - Always: the `/api/v1` endpoints (tag `private-api`).
+      - With the **REST Tools** grant: the legacy device-scoped REST
+        operations that list `apiKeyBearer` under `security` (marked
+        `x-api-key-grant: rest_tools`). Operations marked
+        `rest_tools+group` also need the **Group REST** grant. Every other
+        operation (device creation/deletion, webhooks, Chatwoot, passkey,
+        `/app/devices`, `/ws`, `/integrations`, `/cs-ai`) rejects API keys.
+      - With the **MCP Tools** grant: the MCP endpoint `/api/v1/mcp`.
+      `X-Device-Id` is optional with a key; when sent it must resolve to
+      the key's device. Sends share a limit of 30 per minute per key.
+      The legacy `/mcp` endpoint keeps Basic Auth/OAuth and does not accept
+      API keys. Keep keys server-side; never put them in URLs or prompts.
+      Details: docs/private-api-keys.md.
 servers:
   - url: http://localhost:3000
+  - url: https://wa.ruangsanad.com
+    description: Ruang Sanad production
 tags:
   - name: app
     description: Initial Connection to Whatsapp server
@@ -39,6 +62,8 @@ tags:
     description: newsletter setting
   - name: chatwoot
     description: Chatwoot integration for customer support
+  - name: private-api
+    description: Private integration API (Bearer API key from /integrations)
 security:
   - basicAuth: []
 
@@ -68,6 +93,10 @@ paths:
                 example: Service Unavailable
   /app/login:
     get:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools
       operationId: appLogin
       tags:
         - app
@@ -89,6 +118,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /app/login-with-code:
     get:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools
       operationId: appLoginWithCode
       tags:
         - app
@@ -205,6 +238,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /app/logout:
     get:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools
       operationId: appLogout
       tags:
         - app
@@ -230,6 +267,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /app/reconnect:
     get:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools
       operationId: appReconnect
       tags:
         - app
@@ -274,6 +315,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /app/status:
     get:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools
       operationId: appStatus
       tags:
         - app
@@ -329,6 +374,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /app/info:
     get:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools
       operationId: appInfo
       tags:
         - app
@@ -469,6 +518,10 @@ paths:
 
   /devices/{device_id}:
     get:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools
       operationId: getDevice
       tags:
         - device
@@ -690,6 +743,10 @@ paths:
 
   /devices/{device_id}/status:
     get:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools
       operationId: getDeviceStatus
       tags:
         - device
@@ -892,6 +949,10 @@ paths:
 
   /user/info:
     get:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools
       operationId: userInfo
       tags:
         - user
@@ -925,6 +986,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /user/avatar:
     get:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools
       operationId: userAvatar
       tags:
         - user
@@ -969,6 +1034,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorInternalServer'
     post:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools
       operationId: userChangeAvatar
       tags:
         - user
@@ -1006,6 +1075,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /user/pushname:
     post:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools
       operationId: userChangePushName
       tags:
         - user
@@ -1046,6 +1119,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /user/my/privacy:
     get:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools
       operationId: userMyPrivacy
       tags:
         - user
@@ -1067,6 +1144,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /user/my/groups:
     get:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools
       operationId: userMyGroups
       tags:
         - user
@@ -1101,6 +1182,10 @@ paths:
 
   /user/my/newsletters:
     get:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools
       operationId: userMyNewsletter
       tags:
         - user
@@ -1122,6 +1207,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /user/my/contacts:
     get:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools
       operationId: userMyContacts
       tags:
         - user
@@ -1143,6 +1232,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /user/check:
     get:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools
       operationId: userCheck
       tags:
         - user
@@ -1176,6 +1269,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /user/business-profile:
     get:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools
       operationId: userBusinessProfile
       tags:
         - user
@@ -1212,6 +1309,10 @@ paths:
 
   /send/message:
     post:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools
       operationId: sendMessage
       tags:
         - send
@@ -1279,6 +1380,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /send/image:
     post:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools
       operationId: sendImage
       tags:
         - send
@@ -1367,6 +1472,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /send/audio:
     post:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools
       operationId: sendAudio
       tags:
         - send
@@ -1430,6 +1539,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /send/file:
     post:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools
       operationId: sendFile
       tags:
         - send
@@ -1502,6 +1615,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /send/sticker:
     post:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools
       operationId: sendSticker
       tags:
         - send
@@ -1558,6 +1675,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /send/video:
     post:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools
       operationId: sendVideo
       tags:
         - send
@@ -1650,6 +1771,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /send/contact:
     post:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools
       operationId: sendContact
       tags:
         - send
@@ -1705,6 +1830,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /send/link:
     post:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools
       operationId: sendLink
       tags:
         - send
@@ -1760,6 +1889,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /send/location:
     post:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools
       operationId: sendLocation
       tags:
         - send
@@ -1815,6 +1948,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /send/poll:
     post:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools
       operationId: sendPoll
       tags:
         - send
@@ -1878,6 +2015,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /send/presence:
     post:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools
       operationId: sendPresence
       tags:
         - send
@@ -1923,6 +2064,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /send/chat-presence:
     post:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools
       operationId: sendChatPresence
       tags:
         - send
@@ -1970,6 +2115,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /send/schedules:
     get:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools
       operationId: listScheduledSends
       tags:
         - send
@@ -2032,6 +2181,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /send/schedules/{schedule_id}:
     get:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools
       operationId: getScheduledSend
       tags:
         - send
@@ -2060,6 +2213,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /send/schedules/{schedule_id}/pause:
     post:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools+group
       operationId: pauseScheduledSend
       tags:
         - send
@@ -2095,6 +2252,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /send/schedules/{schedule_id}/resume:
     post:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools+group
       operationId: resumeScheduledSend
       tags:
         - send
@@ -2134,6 +2295,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /send/schedules/{schedule_id}/cancel:
     post:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools+group
       operationId: cancelScheduledSend
       tags:
         - send
@@ -2171,6 +2336,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /message/{message_id}/revoke:
     post:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools
       operationId: revokeMessage
       tags:
         - message
@@ -2220,6 +2389,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /message/{message_id}/delete:
     post:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools
       operationId: deleteMessage
       tags:
         - message
@@ -2263,6 +2436,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /message/{message_id}/reaction:
     post:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools
       operationId: reactMessage
       tags:
         - message
@@ -2310,6 +2487,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /message/{message_id}/update:
     post:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools
       operationId: updateMessage
       tags:
         - message
@@ -2364,6 +2545,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /message/{message_id}/read:
     post:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools
       operationId: readMessage
       tags:
         - message
@@ -2409,6 +2594,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /message/{message_id}/played:
     post:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools
       operationId: markMessagePlayed
       tags:
         - message
@@ -2459,6 +2648,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /message/{message_id}/star:
     post:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools
       operationId: starMessage
       tags:
         - message
@@ -2504,6 +2697,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /message/{message_id}/unstar:
     post:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools
       operationId: unstarMessage
       tags:
         - message
@@ -2549,6 +2746,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /message/{message_id}/forward:
     post:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools
       operationId: forwardMessage
       tags:
         - message
@@ -2609,6 +2810,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /message/{message_id}/download:
     get:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools
       operationId: downloadMessageMedia
       tags:
         - message
@@ -2694,6 +2899,10 @@ paths:
 
   /call/reject:
     post:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools
       operationId: rejectCall
       tags:
         - call
@@ -2752,6 +2961,10 @@ paths:
 
   /chats:
     get:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools
       operationId: listChats
       tags:
         - chat
@@ -2815,6 +3028,10 @@ paths:
                 $ref: '#/components/schemas/ErrorUnauthorized'
   /chat/{chat_jid}/messages:
     get:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools
       operationId: getChatMessages
       tags:
         - chat
@@ -2903,6 +3120,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /chat/{chat_jid}/history:
     post:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools
       operationId: requestChatHistory
       tags:
         - chat
@@ -2964,6 +3185,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /chat/{chat_jid}/pin:
     post:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools
       operationId: pinChat
       tags:
         - chat
@@ -3024,6 +3249,10 @@ paths:
 
   /chat/{chat_jid}/disappearing:
     post:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools
       operationId: setDisappearingTimer
       tags:
         - chat
@@ -3072,6 +3301,10 @@ paths:
 
   /chat/{chat_jid}/archive:
     post:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools
       operationId: archiveChat
       tags:
         - chat
@@ -3132,6 +3365,10 @@ paths:
 
   /group/info:
     get:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools+group
       operationId: groupInfo
       tags:
         - group
@@ -3165,6 +3402,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /group:
     post:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools+group
       operationId: createGroup
       tags:
         - group
@@ -3213,6 +3454,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /group/participants:
     get:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools+group
       operationId: getGroupParticipants
       tags:
         - group
@@ -3246,6 +3491,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorInternalServer'
     post:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools+group
       operationId: addParticipantToGroup
       tags:
         - group
@@ -3278,6 +3527,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /group/participants/export:
     get:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools+group
       operationId: exportGroupParticipants
       tags:
         - group
@@ -3313,6 +3566,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /group/participants/remove:
     post:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools+group
       operationId: removeParticipantFromGroup
       tags:
         - group
@@ -3345,6 +3602,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /group/participants/promote:
     post:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools+group
       operationId: promoteParticipantToAdmin
       tags:
         - group
@@ -3377,6 +3638,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /group/participants/demote:
     post:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools+group
       operationId: demoteParticipantToMember
       tags:
         - group
@@ -3409,6 +3674,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /group/join-with-link:
     post:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools+group
       operationId: joinGroupWithLink
       tags:
         - group
@@ -3445,6 +3714,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /group/info-from-link:
     get:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools+group
       operationId: getGroupInfoFromLink
       tags:
         - group
@@ -3480,6 +3753,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /group/participant-requests:
     get:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools+group
       operationId: getGroupParticipantRequests
       tags:
         - group
@@ -3514,6 +3791,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /group/participant-requests/approve:
     post:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools+group
       operationId: approveGroupParticipantRequest
       tags:
         - group
@@ -3560,6 +3841,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /group/participant-requests/reject:
     post:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools+group
       operationId: rejectGroupParticipantRequest
       tags:
         - group
@@ -3606,6 +3891,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /group/leave:
     post:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools+group
       operationId: leaveGroup
       tags:
         - group
@@ -3642,6 +3931,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /group/photo:
     post:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools+group
       operationId: setGroupPhoto
       tags:
         - group
@@ -3685,6 +3978,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /group/name:
     post:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools+group
       operationId: setGroupName
       tags:
         - group
@@ -3730,6 +4027,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /group/locked:
     post:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools+group
       operationId: setGroupLocked
       tags:
         - group
@@ -3775,6 +4076,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /group/announce:
     post:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools+group
       operationId: setGroupAnnounce
       tags:
         - group
@@ -3820,6 +4125,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /group/topic:
     post:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools+group
       operationId: setGroupTopic
       tags:
         - group
@@ -3864,6 +4173,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /group/invite-link:
     get:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools+group
       operationId: groupInviteLink
       tags:
         - group
@@ -3904,6 +4217,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /newsletter/unfollow:
     post:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools+group
       operationId: unfollowNewsletter
       tags:
         - newsletter
@@ -3940,6 +4257,10 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
   /newsletter/messages:
     get:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools+group
       operationId: getNewsletterMessages
       tags:
         - newsletter
@@ -3994,6 +4315,10 @@ paths:
 
   /newsletter/messages/{server_id}/download:
     get:
+      security:
+        - basicAuth: []
+        - apiKeyBearer: []
+      x-api-key-grant: rest_tools+group
       operationId: downloadNewsletterMessageMedia
       tags:
         - newsletter
@@ -4357,7 +4682,258 @@ paths:
                         type: string
                         example: 'my-device-id'
 
+  /api/v1/devices/{device_id}/status:
+    get:
+      operationId: privateDeviceStatus
+      tags:
+        - private-api
+      summary: Status of the key's device
+      security:
+        - apiKeyBearer: []
+      parameters:
+        - name: device_id
+          in: path
+          required: true
+          description: Must be the device bound to the key (ID or alias of it)
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Device status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  device_id:
+                    type: string
+                  is_connected:
+                    type: boolean
+                  is_logged_in:
+                    type: boolean
+        '401':
+          $ref: '#/components/responses/PrivateUnauthorized'
+        '403':
+          $ref: '#/components/responses/PrivateForbidden'
+        '503':
+          $ref: '#/components/responses/PrivateUnavailable'
+  /api/v1/messages:
+    post:
+      operationId: privateSendText
+      tags:
+        - private-api
+      summary: Send one text message (idempotent)
+      description: |
+        Sends a text from the key's device. Repeating the same
+        `Idempotency-Key` with the same payload returns the first result
+        without sending again. On `UNCERTAIN`, check
+        `GET /api/v1/messages/{request_id}` before any new send; do not retry
+        with a new key.
+      security:
+        - apiKeyBearer: []
+      parameters:
+        - name: X-Device-Id
+          in: header
+          required: true
+          description: The device bound to the key
+          schema:
+            type: string
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            pattern: '^[a-zA-Z0-9:_-]{8,128}$'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [phone, message]
+              properties:
+                phone:
+                  type: string
+                  description: International digits or `<digits>@s.whatsapp.net`. A group JID (`...@g.us`) needs the Group grant.
+                  example: '628123456789'
+                message:
+                  type: string
+                  maxLength: 4096
+      responses:
+        '200':
+          description: Sent (or replayed)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrivateSendResult'
+        '202':
+          description: Send outcome uncertain (state UNCERTAIN); reconcile before sending again
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrivateSendResult'
+        '400':
+          description: INVALID_BODY, INVALID_MESSAGE, INVALID_RECIPIENT or IDEMPOTENCY_KEY_REQUIRED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrivateAPIError'
+        '401':
+          $ref: '#/components/responses/PrivateUnauthorized'
+        '403':
+          $ref: '#/components/responses/PrivateForbidden'
+        '409':
+          description: IDEMPOTENCY_CONFLICT (same key, different payload)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrivateAPIError'
+        '415':
+          description: JSON_REQUIRED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrivateAPIError'
+        '429':
+          description: RATE_LIMITED (30 sends per minute per key)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrivateAPIError'
+        '503':
+          $ref: '#/components/responses/PrivateUnavailable'
+  /api/v1/messages/{request_id}:
+    get:
+      operationId: privateSendStatus
+      tags:
+        - private-api
+      summary: Result of a send made with this key
+      security:
+        - apiKeyBearer: []
+      parameters:
+        - name: request_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Send state (not a delivery receipt)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrivateSendResult'
+        '401':
+          $ref: '#/components/responses/PrivateUnauthorized'
+        '404':
+          description: REQUEST_NOT_FOUND (unknown or made by another key)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrivateAPIError'
+        '503':
+          $ref: '#/components/responses/PrivateUnavailable'
+  /api/v1/mcp:
+    post:
+      operationId: privateMCP
+      tags:
+        - private-api
+      summary: MCP (Streamable HTTP) for API keys with the MCP Tools grant
+      description: |
+        JSON-RPC 2.0, one request per call (no batches). Allowed methods:
+        `initialize`, `notifications/initialized`, `ping`, `tools/list`,
+        `tools/call`. Tools: `whatsapp_send`, `whatsapp_schedule`,
+        `whatsapp_message`, `whatsapp_chat`, `whatsapp_group`,
+        `whatsapp_app`, always on the key's device. Group sends, group
+        changes and schedule changes return `MCP_GROUP_APPROVAL_REQUIRED`.
+        Tool calls share the 30 per minute limit. Available only when MCP is
+        enabled on the server.
+      security:
+        - apiKeyBearer: []
+      parameters:
+        - name: X-Device-Id
+          in: header
+          required: false
+          description: Optional; must be the key's device
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [jsonrpc, method]
+              properties:
+                jsonrpc:
+                  type: string
+                  enum: ['2.0']
+                id:
+                  oneOf:
+                    - type: string
+                    - type: integer
+                method:
+                  type: string
+                params:
+                  type: object
+            example:
+              jsonrpc: '2.0'
+              id: 1
+              method: tools/list
+      responses:
+        '200':
+          description: JSON-RPC response (JSON or event stream)
+        '400':
+          description: INVALID_MCP_PAYLOAD, INVALID_MCP_VERSION, INVALID_MCP_TOOL_CALL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrivateAPIError'
+        '401':
+          $ref: '#/components/responses/PrivateUnauthorized'
+        '403':
+          description: MCP_TOOLS_NOT_GRANTED, DEVICE_NOT_ALLOWED, MCP_METHOD_NOT_ALLOWED, MCP_TOOL_NOT_ALLOWED or MCP_GROUP_APPROVAL_REQUIRED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrivateAPIError'
+        '429':
+          description: MCP_RATE_LIMITED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrivateAPIError'
+    delete:
+      operationId: privateMCPCloseSession
+      tags:
+        - private-api
+      summary: Close an MCP session
+      security:
+        - apiKeyBearer: []
+      responses:
+        '200':
+          description: Session closed
 components:
+  responses:
+    PrivateUnauthorized:
+      description: API_KEY_REQUIRED or INVALID_API_KEY (missing, wrong, expired or revoked)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PrivateAPIError'
+    PrivateForbidden:
+      description: DEVICE_NOT_ALLOWED, GROUP_SEND_NOT_ALLOWED, REST_TOOLS_NOT_GRANTED or ROUTE_NOT_ALLOWED
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PrivateAPIError'
+    PrivateUnavailable:
+      description: INTEGRATION_DISABLED, KEY_STORE_UNAVAILABLE or SERVICE_UNAVAILABLE (no fallback to Basic Auth)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PrivateAPIError'
   parameters:
     DeviceIdHeader:
       name: X-Device-Id
@@ -4390,7 +4966,37 @@ components:
     basicAuth:
       type: http
       scheme: basic
+    apiKeyBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: gwa_<prefix>_<secret>
+      description: |
+        Private API key created at /integrations. Bound to one device;
+        grants are chosen at creation (REST Tools, MCP Tools, Group REST).
   schemas:
+    PrivateAPIError:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Machine-readable code
+          example: DEVICE_NOT_ALLOWED
+    PrivateSendResult:
+      type: object
+      properties:
+        request_id:
+          type: string
+        state:
+          type: string
+          enum: [PENDING, SENT, UNCERTAIN]
+          description: SENT means GoWA's send call returned successfully; it is not a delivery or read receipt.
+        message_id:
+          type: string
+        replayed:
+          type: boolean
+          description: True when the same Idempotency-Key and payload were sent before; no new message was sent.
+        note:
+          type: string
     ChatwootDeviceConfig:
       type: object
       description: Per-device Chatwoot routing config (API token masked on every read)
