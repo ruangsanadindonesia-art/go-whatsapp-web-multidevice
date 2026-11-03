@@ -232,19 +232,19 @@ form.api-form{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18p
 <section class="card"><div class="kicker">OAuth MCP</div><div class="metric small">{{if .OAuthEnabled}}Enabled{{else}}Disabled{{end}}</div><p class="sub">MCP_OAUTH_ENABLED dan MCP_ENABLED</p></section>
 <section class="card"><div class="kicker">Tools terkonsolidasi</div><div class="metric">6</div><p class="sub">MCP tool definitions di source saat ini</p></section>
 </div>
-<div class="note"><strong>Permission per-agent belum diberlakukan.</strong>OAuth existing bukan bukti bahwa sebuah agent hanya bisa mengakses device/tool tertentu. Akun Basic yang restricted saat ini ditolak di MCP. Jangan memberikan akses unrestricted ke agent eksternal sebelum policy granular terverifikasi.</div>
+<div class="note"><strong>Dua jalur akses MCP</strong>Endpoint legacy <span class="mono">/mcp</span> memakai Basic Auth atau OAuth dan belum memiliki permission granular per-agent. Endpoint privat <span class="mono">/api/v1/mcp</span> menerima API Key dengan izin MCP Tools dan pembatasan satu device. Mutasi grup dari jalur API Key tetap diblokir sampai approval manusia tersedia.</div>
 <div class="section"><div><h2>Connection details</h2><p>Informasi non-rahasia dari konfigurasi aktif.</p></div></div>
 <div class="two">
 <div class="card">
-<div class="row"><span>Resource path</span><strong class="mono">{{.MCPPath}}</strong></div>
+<div class="row"><span>Legacy MCP endpoint</span><strong class="mono">{{.MCPPath}}</strong></div><div class="row"><span>Private API Key MCP</span><strong class="mono">{{.Base}}/api/v1/mcp</strong></div>
 <div class="row"><span>Authentication</span><strong>{{.MCPAuth}}</strong></div>
-<div class="row"><span>Device-scoped OAuth access</span><strong>Not implemented</strong></div>
-<div class="row"><span>Granular tool permission</span><strong>Not implemented</strong></div>
+<div class="row"><span>OAuth principal device scopes</span><strong>Not implemented</strong></div>
+<div class="row"><span>API Key device policy</span><strong>Scoped per key</strong></div>
 </div>
 <div class="card"><h2>Registered tool categories</h2><ul class="tool-list"><li>whatsapp_send</li><li>whatsapp_schedule</li><li>whatsapp_message</li><li>whatsapp_chat</li><li>whatsapp_group</li><li>whatsapp_app</li></ul></div>
 </div>
 <div class="section"><div><h2>MCP integration guide</h2><p>Konfigurasi OAuth dan klien Claude / Hermes.</p></div></div>
-<div class="card"><p class="sub">Remote MCP memerlukan HTTPS publik dan OAuth yang dikonfigurasi benar. Izin setiap tool dan device harus diterapkan server-side sebelum diberikan ke pengguna eksternal.</p><a class="link" href="https://github.com/ruangsanadindonesia-art/go-whatsapp-web-multidevice/blob/main/docs/mcp-oauth.md">Lihat panduan MCP OAuth</a></div>
+<div class="card"><p class="sub">Claude dapat menggunakan OAuth pada endpoint legacy. Client MCP yang bisa mengirim header Authorization: Bearer dapat menggunakan API Key khusus pada /api/v1/mcp, dengan izin MCP Tools yang dipilih pada tab REST API.</p><a class="link" href="https://github.com/ruangsanadindonesia-art/go-whatsapp-web-multidevice/blob/main/docs/mcp-oauth.md">Lihat panduan MCP OAuth</a></div>
 {{end}}
 <footer>GoWA Integration Administration · Scoped API Keys · REST and MCP integration</footer>
 </main></body></html>`))
