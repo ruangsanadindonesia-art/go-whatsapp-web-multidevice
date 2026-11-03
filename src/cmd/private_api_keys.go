@@ -30,12 +30,19 @@ type privateAPIKey struct {
 	Prefix     string
 	DeviceID   string
 	CanGroup   bool
+	CanRESTTools bool
+	CanMCPTools bool
 	CreatedAt  int64
 	ExpiresAt  int64
 	RevokedAt  sql.NullInt64
 }
 
 func (k privateAPIKey) ExpiryLabel() string { return time.Unix(k.ExpiresAt,0).UTC().Format("02 Jan 2006") }
+
+type privateAPIToolGrants struct {
+	REST bool
+	MCP bool
+}
 
 type privateAPISendRecord struct {
 	ID          string
@@ -85,6 +92,28 @@ func openPrivateAPIStore(file string) (*privateAPIStore, error) {
 			return nil, err
 		}
 	}
+	// Additive upgrade. Existing keys do not inherit additional tool access.
+	for _, column := range []string{"can_rest_tools", "can_mcp_tools"} {
+		rows, err := db.Query("PRAGMA table_info(private_api_keys)")
+		if err != nil { _ = db.Close(); return nil, err }
+		found := false
+		for rows.Next() {
+			var cid, notNull, pk int
+			var name, colType string
+			var defaultValue sql.NullString
+			if err = rows.Scan(&cid, &name, &colType, &notNull, &defaultValue, &pk); err != nil { break }
+			if name == column { found = true }
+		}
+		rowsErr := rows.Err()
+		_ = rows.Close()
+		if err != nil { _ = db.Close(); return nil, err }
+		if rowsErr != nil { _ = db.Close(); return nil, rowsErr }
+		if !found {
+			if _, err := db.Exec("ALTER TABLE private_api_keys ADD COLUMN " + column + " INTEGER NOT NULL DEFAULT 0"); err != nil {
+				_ = db.Close(); return nil, err
+			}
+		}
+	}
 	return &privateAPIStore{db: db, rate: make(map[string]privateAPIRateWindow)}, nil
 }
 
@@ -107,7 +136,7 @@ func privateAPITokenHash(raw string) string {
 	return hex.EncodeToString(h[:])
 }
 
-func (s *privateAPIStore) Create(ctx context.Context, name, canonicalDevice string, group bool) (privateAPIKey, string, error) {
+func (s *privateAPIStore) Create(ctx context.Context, name, canonicalDevice string, group bool, permissions ...privateAPIToolGrants) (privateAPIKey, string, error) {
 	name = strings.TrimSpace(name)
 	if name == "" || len(name) > 80 || strings.ContainsAny(name, "\r\n\x00") {
 		return privateAPIKey{}, "", errors.New("nama integrasi harus 1 sampai 80 karakter")
@@ -130,26 +159,33 @@ func (s *privateAPIStore) Create(ctx context.Context, name, canonicalDevice stri
 	}
 	groupInt := 0
 	if group { groupInt = 1 }
+	grants := privateAPIToolGrants{}
+	if len(permissions) > 0 { grants = permissions[0] }
+	key.CanRESTTools, key.CanMCPTools = grants.REST, grants.MCP
+	restInt, mcpInt := 0, 0
+	if grants.REST { restInt = 1 }
+	if grants.MCP { mcpInt = 1 }
 	_, err = s.db.ExecContext(ctx,
-		"INSERT INTO private_api_keys (id,name,prefix,token_hash,device_id,can_send_group,created_at,expires_at) VALUES (?,?,?,?,?,?,?,?)",
-		key.ID, key.Name, key.Prefix, privateAPITokenHash(token), key.DeviceID, groupInt, key.CreatedAt, key.ExpiresAt)
+		"INSERT INTO private_api_keys (id,name,prefix,token_hash,device_id,can_send_group,created_at,expires_at,can_rest_tools,can_mcp_tools) VALUES (?,?,?,?,?,?,?,?,?,?)",
+		key.ID, key.Name, key.Prefix, privateAPITokenHash(token), key.DeviceID, groupInt, key.CreatedAt, key.ExpiresAt,restInt,mcpInt)
 	if err != nil { return privateAPIKey{}, "", fmt.Errorf("gagal menyimpan API key: %w", err) }
 	return key, token, nil
 }
 
 func (s *privateAPIStore) List(ctx context.Context) ([]privateAPIKey, error) {
 	rows, err := s.db.QueryContext(ctx,
-		"SELECT id,name,prefix,device_id,can_send_group,created_at,expires_at,revoked_at FROM private_api_keys ORDER BY created_at DESC, name LIMIT 250")
+		"SELECT id,name,prefix,device_id,can_send_group,created_at,expires_at,revoked_at,can_rest_tools,can_mcp_tools FROM private_api_keys ORDER BY created_at DESC, name LIMIT 250")
 	if err != nil { return nil, err }
 	defer rows.Close()
 	keys := []privateAPIKey{}
 	for rows.Next() {
 		var key privateAPIKey
-		var group int
-		if err := rows.Scan(&key.ID,&key.Name,&key.Prefix,&key.DeviceID,&group,&key.CreatedAt,&key.ExpiresAt,&key.RevokedAt); err != nil {
+		var group, restAllowed, mcpAllowed int
+		if err := rows.Scan(&key.ID,&key.Name,&key.Prefix,&key.DeviceID,&group,&key.CreatedAt,&key.ExpiresAt,&key.RevokedAt,&restAllowed,&mcpAllowed); err != nil {
 			return nil, err
 		}
 		key.CanGroup = group != 0
+		key.CanRESTTools, key.CanMCPTools = restAllowed != 0, mcpAllowed != 0
 		keys = append(keys, key)
 	}
 	return keys, rows.Err()
@@ -171,10 +207,10 @@ func (s *privateAPIStore) Authenticate(ctx context.Context, raw string) (private
 	}
 	var key privateAPIKey
 	var hash string
-	var group int
+	var group, restAllowed, mcpAllowed int
 	err := s.db.QueryRowContext(ctx,
-		"SELECT id,name,prefix,token_hash,device_id,can_send_group,created_at,expires_at,revoked_at FROM private_api_keys WHERE prefix=?",
-		parts[1]).Scan(&key.ID,&key.Name,&key.Prefix,&hash,&key.DeviceID,&group,&key.CreatedAt,&key.ExpiresAt,&key.RevokedAt)
+		"SELECT id,name,prefix,token_hash,device_id,can_send_group,created_at,expires_at,revoked_at,can_rest_tools,can_mcp_tools FROM private_api_keys WHERE prefix=?",
+		parts[1]).Scan(&key.ID,&key.Name,&key.Prefix,&hash,&key.DeviceID,&group,&key.CreatedAt,&key.ExpiresAt,&key.RevokedAt,&restAllowed,&mcpAllowed)
 	if errors.Is(err,sql.ErrNoRows) { return privateAPIKey{}, false, nil }
 	if err != nil { return privateAPIKey{}, false, err }
 	provided := privateAPITokenHash(raw)
@@ -183,6 +219,7 @@ func (s *privateAPIStore) Authenticate(ctx context.Context, raw string) (private
 		return privateAPIKey{}, false, nil
 	}
 	key.CanGroup = group != 0
+	key.CanRESTTools, key.CanMCPTools = restAllowed != 0, mcpAllowed != 0
 	return key, true, nil
 }
 

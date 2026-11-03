@@ -336,6 +336,9 @@ func registerWebLogin(app *fiber.App, accounts map[string]string, store *webSess
 func newWebOrBasicAuthMiddleware(accounts map[string]string, store *webSessionStore, base string) fiber.Handler {
 	login := strings.TrimRight(base, "/") + "/login"
 	return func(c fiber.Ctx) error {
+		if permitted, ok := c.Locals("private_legacy_authorized").(bool); ok && permitted {
+			return c.Next()
+		}
 		header := strings.TrimSpace(c.Get(fiber.HeaderAuthorization))
 		if strings.HasPrefix(strings.ToLower(header), "basic ") {
 			decoded, err := base64.StdEncoding.DecodeString(strings.TrimSpace(header[6:]))

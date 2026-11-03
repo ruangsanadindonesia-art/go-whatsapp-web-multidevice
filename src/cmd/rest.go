@@ -141,6 +141,13 @@ func restServer(_ *cobra.Command, _ []string) {
 			}
 		}()
 		registerPrivateIntegrationAPI(app, config.AppBasePath, privateKeys, productionPrivateAPIBackend(dm))
+		registerPrivateKeyMCP(app, dm, privateKeys, productionPrivateAPIBackend(dm), config.AppBasePath, uimcp.Deps{
+			App: appUsecase, Send: sendUsecase, Schedule: scheduleUsecase,
+			Chat: chatUsecase, User: userUsecase, Message: messageUsecase, Group: groupUsecase,
+		})
+		// Bearer key access to existing device-bound REST routes is checked
+		// before Basic Auth and is never accepted by CS Bridge or admin UI.
+		app.Use(newPrivateLegacyToolAuth(privateKeys, productionPrivateAPIBackend(dm), config.AppBasePath))
 	}
 
 	if len(config.AppBasicAuthCredential) > 0 {
