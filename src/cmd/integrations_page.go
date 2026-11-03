@@ -210,7 +210,7 @@ form.api-form{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18p
 <div class="table-wrap"><table><thead><tr><th>Client</th><th>Device</th><th>Izin</th><th>Status</th><th>Aksi</th></tr></thead><tbody>
 {{range .Clients}}
 <tr><td><strong>{{.Name}}</strong><div class="sub mono">gwa_{{.Prefix}}_••••</div></td><td class="mono">{{.DeviceID}}</td><td>{{if .CanGroup}}Personal + grup otomatis{{else}}Personal saja{{end}}<div class="sub">Status device/pesan</div></td>
-<td>{{if .RevokedAt.Valid}}<span class="pill warn">Revoked</span>{{else if le .ExpiresAt $.NowUnix}}<span class="pill warn">Expired</span>{{else}}<span class="pill">Active</span>{{end}}<div class="sub">Expires: {{.ExpiresAt}} (Unix UTC)</div></td>
+<td>{{if .RevokedAt.Valid}}<span class="pill warn">Revoked</span>{{else if le .ExpiresAt $.NowUnix}}<span class="pill warn">Expired</span>{{else}}<span class="pill">Active</span>{{end}}<div class="sub">Expires: {{.ExpiryLabel}}</div></td>
 <td>{{if not .RevokedAt.Valid}}<form class="inline-form" method="post" action="{{$.Base}}/integrations/keys/{{.ID}}/revoke"><button class="revoke" type="submit">Revoke</button></form>{{else}}-{{end}}</td></tr>
 {{else}}<tr><td colspan="5">Belum ada API Key. Buat client di atas.</td></tr>{{end}}
 </tbody></table></div>
