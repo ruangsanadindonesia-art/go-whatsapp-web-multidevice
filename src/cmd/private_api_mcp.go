@@ -28,6 +28,11 @@ func registerPrivateKeyMCP(app *fiber.App, dm *whatsapp.DeviceManager, store *pr
   if err!=nil {return privateAPIError(c,503,"KEY_STORE_UNAVAILABLE")}
   if !valid {return privateAPIError(c,401,"INVALID_API_KEY")}
   if !key.CanMCPTools {return privateAPIError(c,403,"MCP_TOOLS_NOT_GRANTED")}
+  if key.CanGroup {
+   groups,err:=store.KeyGroups(c.Context(),key.ID)
+   if err!=nil {return privateAPIError(c,503,"KEY_STORE_UNAVAILABLE")}
+   for _,g:=range groups { key.MCPGroups=append(key.MCPGroups,g.JID) }
+  }
   if backend.Resolve==nil {return privateAPIError(c,503,"DEVICE_MANAGER_UNAVAILABLE")}
   requested:=strings.TrimSpace(c.Get("X-Device-Id"))
   if requested=="" {requested=key.DeviceID}
@@ -99,10 +104,14 @@ func privateMCPToolPolicy(raw json.RawMessage, key privateAPIKey, backend privat
  chatJID:=privateMCPArg(params.Arguments,"chat_jid")
  if params.Name=="whatsapp_send" {
   if phone=="" { return "INVALID_MCP_RECIPIENT" }
-  // API-key MCP messages to groups require a human approval workflow that
-  // has not yet been implemented. The REST v1 group grant does not bypass it.
-  if strings.HasSuffix(phone,"@g.us") {return "MCP_GROUP_APPROVAL_REQUIRED"}
-  if !privateMCPRecipientPersonal(phone) {return "MCP_RECIPIENT_NOT_ALLOWED"}
+  // API-key MCP messages to groups need a human approval workflow that
+  // does not exist yet. The exception is a group an administrator listed in
+  // the key's group list (checked at /integrations), and only for a key with
+  // the Group grant.
+  if strings.HasSuffix(phone,"@g.us") {
+   if !key.CanGroup {return "GROUP_SEND_NOT_ALLOWED"}
+   if !privateMCPGroupAllowlisted(phone,key.MCPGroups) {return "MCP_GROUP_APPROVAL_REQUIRED"}
+  } else if !privateMCPRecipientPersonal(phone) {return "MCP_RECIPIENT_NOT_ALLOWED"}
  }
  if params.Name=="whatsapp_group" {
   action:=privateMCPArg(params.Arguments,"action")
@@ -137,6 +146,16 @@ func privateMCPArg(args map[string]json.RawMessage,key string) string {
  _=json.Unmarshal(args[key],&value)
  return strings.TrimSpace(value)
 }
+// privateMCPGroupAllowlisted reports whether jid is a well-formed group JID
+// in the key's list (exact match).
+func privateMCPGroupAllowlisted(jid string, allowed []string) bool {
+ if !privateAPIGroupJID.MatchString(jid) { return false }
+ for _,entry:=range allowed {
+  if entry==jid { return true }
+ }
+ return false
+}
+
 func privateMCPRecipientPersonal(phone string) bool {
  _,isGroup,ok:=privateAPINormalizeRecipient(phone)
  return ok && !isGroup

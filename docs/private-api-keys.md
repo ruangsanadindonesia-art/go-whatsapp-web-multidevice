@@ -87,7 +87,9 @@ This endpoint exposes the same six consolidated tools available in GoWA:
 
 Compatible clients send `Authorization: Bearer <API_KEY>`, normal MCP Streamable HTTP JSON-RPC requests and, optionally, `X-Device-Id: <GRANTED_DEVICE_ID>`. Server-side checks enforce the canonical granted device even if a tool tries to override `device_id`. Batch JSON-RPC requests, unknown tools, or unsupported methods are denied.
 
-**Human approval limitation:** direct MCP sends to groups, group mutations and schedule mutations remain blocked with `MCP_GROUP_APPROVAL_REQUIRED` until a durable approval service is introduced. Group reads (info, participants, join requests, non-reset invite link) remain available. The separate REST Group checkbox does not bypass the MCP gate.
+**Human approval limitation:** direct MCP sends to groups, group mutations and schedule mutations remain blocked with `MCP_GROUP_APPROVAL_REQUIRED` until a durable approval service is introduced.
+
+**Exception: checked groups per key.** For a key with both **MCP Tools** and **Group**, the API Keys table shows a **Grup MCP** link. It lists the groups the key's device has joined; check the groups this key may send to and save (no restart, stored in `private_api_key_groups`). `whatsapp_send` to a checked group is then allowed. A key without the Group grant gets `GROUP_SEND_NOT_ALLOWED`; unchecked groups stay `MCP_GROUP_APPROVAL_REQUIRED`. Checking a group never opens group management, schedule changes or message changes in groups. Only groups the device has joined (or ones already checked) can be saved. Group reads (info, participants, join requests, non-reset invite link) remain available. The separate REST Group checkbox does not bypass the MCP gate.
 
 The original `/mcp` route continues using existing Basic Auth or OAuth, not private API Keys. Claude connectors that require OAuth should continue using that endpoint; a client supporting custom Bearer headers can use `/api/v1/mcp`.
 

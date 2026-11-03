@@ -215,3 +215,26 @@ func TestPrivateLegacyRESTSendRateLimit(t *testing.T) {
   if resp.StatusCode!=want {t.Fatalf("request %d got %d, expected %d",i+1,resp.StatusCode,want)}
  }
 }
+
+func TestPrivateMCPGroupAllowlist(t *testing.T) {
+ backend:=privateAPIBackend{Resolve:func(ctx context.Context,id string)(context.Context,string,error){return ctx,"allowed",nil}}
+ withGroup:=privateAPIKey{DeviceID:"allowed",CanMCPTools:true,CanGroup:true,MCPGroups:[]string{"120363239125791211@g.us"}}
+ noGroup:=privateAPIKey{DeviceID:"allowed",CanMCPTools:true,MCPGroups:[]string{"120363239125791211@g.us"}}
+ emptyList:=privateAPIKey{DeviceID:"allowed",CanMCPTools:true,CanGroup:true}
+ call:=func(name,args string,key privateAPIKey) string {
+  return privateMCPToolPolicy(json.RawMessage("{\"name\":\""+name+"\",\"arguments\":"+args+"}"),key,backend)
+ }
+ send:="{\"phone\":\"120363239125791211@g.us\",\"type\":\"text\"}"
+ for _,tc:=range []struct{name,args string;key privateAPIKey;want string}{
+  {"whatsapp_send",send,withGroup,""},
+  {"whatsapp_send",send,noGroup,"GROUP_SEND_NOT_ALLOWED"},
+  {"whatsapp_send",send,emptyList,"MCP_GROUP_APPROVAL_REQUIRED"},
+  {"whatsapp_send","{\"phone\":\"120363000000000000@g.us\",\"type\":\"text\"}",withGroup,"MCP_GROUP_APPROVAL_REQUIRED"},
+  // A checked group never opens group management, schedules or message changes.
+  {"whatsapp_group","{\"action\":\"leave\",\"group_id\":\"120363239125791211@g.us\"}",withGroup,"MCP_GROUP_APPROVAL_REQUIRED"},
+  {"whatsapp_schedule","{\"action\":\"cancel\"}",withGroup,"MCP_GROUP_APPROVAL_REQUIRED"},
+  {"whatsapp_message","{\"action\":\"revoke\",\"phone\":\"120363239125791211@g.us\"}",withGroup,"MCP_GROUP_APPROVAL_REQUIRED"},
+ } {
+  if got:=call(tc.name,tc.args,tc.key);got!=tc.want {t.Errorf("%s %s => %q expected %q",tc.name,tc.args,got,tc.want)}
+ }
+}
