@@ -66,7 +66,7 @@ func TestPrivateLegacyRESTToolScope(t *testing.T) {
   if c.Locals("private_legacy_authorized")==true {return c.Next()}
   return c.SendStatus(401)
  })
- for _,path:=range []string{"/send/message","/group","/integrations","/cs-ai","/devices/dev-one/status","/devices/dev-two/status","/devices/dev-one/webhook","/app/devices","/app/status"} {
+ for _,path:=range []string{"/send/message","/group","/integrations","/cs-ai","/devices/dev-one/status","/devices/dev-two/status","/devices/dev-one/webhook","/app/devices","/app/status","/chat/120363012345678901@g.us/archive","/chat/628123456789@s.whatsapp.net/archive"} {
   app.Use(path,func(c fiber.Ctx)error{return c.SendStatus(200)})
  }
  check:=func(method,path,key,device,body string)int{
@@ -98,7 +98,8 @@ func TestPrivateLegacyRESTToolScope(t *testing.T) {
   {"GET","/app/devices",token,"","",403},
   {"GET","/app/status",token,"","",200},
   {"POST","/send/schedules/sched-one/resume",token,"","",403},
-  {"POST","/chat/archive",token,"","{\"chat_jid\":\"120363012345678901@g.us\"}",403},
+  {"POST","/chat/120363012345678901@g.us/archive",token,"","{\"archived\":true,\"phone\":\"628123456789\"}",403},
+  {"POST","/chat/628123456789@s.whatsapp.net/archive",token,"","{\"archived\":true}",200},
  } {
   if got:=check(tc.method,tc.path,tc.key,tc.device,tc.body);got!=tc.want {t.Errorf("%s %s expected %d, got %d",tc.method,tc.path,tc.want,got)}
  }
