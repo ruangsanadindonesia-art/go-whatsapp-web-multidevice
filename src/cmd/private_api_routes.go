@@ -24,6 +24,8 @@ type privateAPIBackend struct {
 	Resolve func(context.Context, string) (context.Context, string, error)
 	Send    func(context.Context, domainSend.MessageRequest) (domainSend.GenericResponse, error)
 	Status  func(context.Context, string) (bool, bool, error)
+	// Groups lists the groups the device has joined (for the MCP group checklist).
+	Groups  func(context.Context, string) ([]privateAPIGroupEntry, error)
 }
 
 func productionPrivateAPIBackend(dm *whatsapp.DeviceManager) privateAPIBackend {
@@ -35,6 +37,20 @@ func productionPrivateAPIBackend(dm *whatsapp.DeviceManager) privateAPIBackend {
 		},
 		Send: sendUsecase.SendText,
 		Status: deviceUsecase.GetStatus,
+		Groups: func(ctx context.Context, deviceID string) ([]privateAPIGroupEntry, error) {
+			instance, _, err := dm.ResolveDevice(deviceID)
+			if err != nil { return nil, err }
+			client := whatsapp.ClientFromContext(whatsapp.ContextWithDevice(ctx, instance))
+			if client == nil || !client.IsLoggedIn() { return nil, errors.New("device belum login") }
+			groups, err := client.GetJoinedGroups(ctx)
+			if err != nil { return nil, err }
+			out := make([]privateAPIGroupEntry, 0, len(groups))
+			for _, g := range groups {
+				if g == nil { continue }
+				out = append(out, privateAPIGroupEntry{JID: g.JID.String(), Name: g.Name})
+			}
+			return out, nil
+		},
 	}
 }
 

@@ -32,6 +32,9 @@ type privateAPIKey struct {
 	CanGroup   bool
 	CanRESTTools bool
 	CanMCPTools bool
+	// MCPGroups are the group JIDs this key may send to through MCP
+	// (managed at /integrations). Loaded only where needed.
+	MCPGroups  []string
 	CreatedAt  int64
 	ExpiresAt  int64
 	RevokedAt  sql.NullInt64
@@ -85,6 +88,9 @@ func openPrivateAPIStore(file string) (*privateAPIStore, error) {
 			"created_at INTEGER NOT NULL, UNIQUE(key_id, idempotency_key)," +
 			"FOREIGN KEY(key_id) REFERENCES private_api_keys(id))",
 		"CREATE INDEX IF NOT EXISTS idx_private_api_requests_owner ON private_api_requests(key_id, id)",
+		"CREATE TABLE IF NOT EXISTS private_api_key_groups (" +
+			"key_id TEXT NOT NULL, jid TEXT NOT NULL, name TEXT NOT NULL DEFAULT '', created_at INTEGER NOT NULL," +
+			"PRIMARY KEY(key_id, jid), FOREIGN KEY(key_id) REFERENCES private_api_keys(id))",
 	}
 	for _, statement := range statements {
 		if _, err := db.Exec(statement); err != nil {
@@ -189,6 +195,77 @@ func (s *privateAPIStore) List(ctx context.Context) ([]privateAPIKey, error) {
 		keys = append(keys, key)
 	}
 	return keys, rows.Err()
+}
+
+// Get returns one key by id (no secret material).
+func (s *privateAPIStore) Get(ctx context.Context, id string) (privateAPIKey, bool, error) {
+	var key privateAPIKey
+	var group, restAllowed, mcpAllowed int
+	err := s.db.QueryRowContext(ctx,
+		"SELECT id,name,prefix,device_id,can_send_group,created_at,expires_at,revoked_at,can_rest_tools,can_mcp_tools FROM private_api_keys WHERE id=?", id).
+		Scan(&key.ID,&key.Name,&key.Prefix,&key.DeviceID,&group,&key.CreatedAt,&key.ExpiresAt,&key.RevokedAt,&restAllowed,&mcpAllowed)
+	if errors.Is(err, sql.ErrNoRows) { return privateAPIKey{}, false, nil }
+	if err != nil { return privateAPIKey{}, false, err }
+	key.CanGroup = group != 0
+	key.CanRESTTools, key.CanMCPTools = restAllowed != 0, mcpAllowed != 0
+	return key, true, nil
+}
+
+// privateAPIGroupEntry is one group a key may send to through MCP.
+type privateAPIGroupEntry struct {
+	JID  string
+	Name string
+}
+
+// KeyGroups lists the MCP group allowlist of a key.
+func (s *privateAPIStore) KeyGroups(ctx context.Context, keyID string) ([]privateAPIGroupEntry, error) {
+	rows, err := s.db.QueryContext(ctx, "SELECT jid,name FROM private_api_key_groups WHERE key_id=? ORDER BY name, jid", keyID)
+	if err != nil { return nil, err }
+	defer rows.Close()
+	out := []privateAPIGroupEntry{}
+	for rows.Next() {
+		var g privateAPIGroupEntry
+		if err := rows.Scan(&g.JID, &g.Name); err != nil { return nil, err }
+		out = append(out, g)
+	}
+	return out, rows.Err()
+}
+
+// SetKeyGroups replaces the MCP group allowlist of a key. Every JID must be
+// a group JID; at most 100 entries.
+func (s *privateAPIStore) SetKeyGroups(ctx context.Context, keyID string, groups []privateAPIGroupEntry) error {
+	if len(groups) > 100 { return errors.New("maksimal 100 grup per key") }
+	for _, g := range groups {
+		if !privateAPIGroupJID.MatchString(g.JID) { return fmt.Errorf("JID grup tidak valid: %s", g.JID) }
+	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil { return err }
+	defer func() { _ = tx.Rollback() }()
+	if _, err := tx.ExecContext(ctx, "DELETE FROM private_api_key_groups WHERE key_id=?", keyID); err != nil { return err }
+	now := time.Now().UTC().Unix()
+	for _, g := range groups {
+		name := strings.TrimSpace(g.Name)
+		if len(name) > 120 { name = name[:120] }
+		if _, err := tx.ExecContext(ctx, "INSERT OR IGNORE INTO private_api_key_groups(key_id,jid,name,created_at) VALUES(?,?,?,?)", keyID, g.JID, name, now); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+// GroupCounts returns how many MCP groups each key has.
+func (s *privateAPIStore) GroupCounts(ctx context.Context) (map[string]int, error) {
+	rows, err := s.db.QueryContext(ctx, "SELECT key_id, COUNT(*) FROM private_api_key_groups GROUP BY key_id")
+	if err != nil { return nil, err }
+	defer rows.Close()
+	out := map[string]int{}
+	for rows.Next() {
+		var id string
+		var n int
+		if err := rows.Scan(&id, &n); err != nil { return nil, err }
+		out[id] = n
+	}
+	return out, rows.Err()
 }
 
 func (s *privateAPIStore) Revoke(ctx context.Context, id string) (bool, error) {

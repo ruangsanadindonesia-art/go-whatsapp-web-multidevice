@@ -251,6 +251,7 @@ func restServer(_ *cobra.Command, _ []string) {
 	registerIntegrationsPage(apiGroup, privateKeys)
 	if privateKeys != nil {
 		registerPrivateAPIKeyAdmin(apiGroup, privateKeys, productionPrivateAPIBackend(dm))
+		registerPrivateAPIGroupAdmin(apiGroup, privateKeys, productionPrivateAPIBackend(dm))
 	}
 
 	// CS AI settings page, proxied to hermes-cs-bridge (no-op unless configured).

@@ -4847,8 +4847,9 @@ paths:
         `whatsapp_message`, `whatsapp_chat`, `whatsapp_group`,
         `whatsapp_app`, always on the key's device. Group changes,
         schedule changes and group sends return `MCP_GROUP_APPROVAL_REQUIRED`,
-        except `whatsapp_send` to a group listed in `APP_MCP_GROUP_ALLOWLIST`
-        by a key with the Group grant (without it: `GROUP_SEND_NOT_ALLOWED`).
+        except `whatsapp_send` to a group checked for this key at
+        `/integrations` → Grup MCP, by a key with the Group grant (without it:
+        `GROUP_SEND_NOT_ALLOWED`).
         Tool calls share the 30 per minute limit. Available only when MCP is
         enabled on the server.
       security:
