@@ -195,21 +195,23 @@ form.api-form{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18p
 <section class="card"><div class="kicker">Akun Basic terkonfigurasi</div><div class="metric">{{.LegacyCount}}</div><p class="sub">Termasuk akun administrator dan service</p></section>
 <section class="card"><div class="kicker">Akun dengan batas device</div><div class="metric">{{.ScopedCount}}</div><p class="sub">Menggunakan APP_BASIC_AUTH_DEVICES</p></section>
 </div>
-<div class="note"><strong>Private REST API v1</strong>Setiap key berlaku 90 hari, untuk satu device. Default hanya kirim pesan personal dan membaca status; kirim grup perlu izin terpisah. Idempotency-Key wajib ketika mengirim pesan. Webhook subscription dan izin granular MCP belum tersedia. Jangan gunakan key di frontend browser.</div>
+<div class="note"><strong>Private REST API v1</strong>Setiap key berlaku 90 hari untuk satu device. Secara default hanya kirim teks dan status. Aktifkan REST Tools atau MCP Tools secara eksplisit untuk integrasi terpercaya; semua akses tetap dibatasi per device. Tindakan grup via REST memerlukan izin terpisah. Mutasi grup melalui MCP masih diblokir sampai approval manusia tersedia. Jangan gunakan key di frontend browser.</div>
 {{if .APIKeysEnabled}}
 <div class="section"><div><h2>Buat API Key</h2><p>Secret ditampilkan sekali. Pastikan device ID sesuai dengan perangkat pada dashboard.</p></div></div>
 <section class="card">
 <form class="api-form" method="post" action="{{.Base}}/integrations/keys">
 <label>Nama integrasi <input name="name" type="text" maxlength="80" placeholder="n8n Ruang Sanad" autocomplete="off" required></label>
 <label>Device ID <input name="device_id" type="text" maxlength="255" placeholder="ID device GoWA" autocomplete="off" required></label>
-<label class="check full"><input name="allow_group" type="checkbox" value="yes"> Izinkan pengiriman grup otomatis (hanya untuk integrasi terpercaya)</label>
+<label class="check full"><input name="allow_rest_tools" type="checkbox" value="yes"> Akses REST tools: pesan media, chat, kontak, pesan, dan tindakan terkait device yang diizinkan</label>
+<label class="check full"><input name="allow_mcp_tools" type="checkbox" value="yes"> Akses keenam tools MCP melalui /api/v1/mcp (akses luas; gunakan hanya untuk integrasi tepercaya)</label>
+<label class="check full"><input name="allow_group" type="checkbox" value="yes"> Izinkan tindakan grup otomatis melalui REST (MCP group mutation tetap memerlukan approval)</label>
 <div class="full"><button type="submit">Generate API Key</button></div>
 </form>
 </section>
 <div class="section"><div><h2>API Keys</h2><p>Kelola client, device, masa berlaku, dan pencabutan akses.</p></div></div>
 <div class="table-wrap"><table><thead><tr><th>Client</th><th>Device</th><th>Izin</th><th>Status</th><th>Aksi</th></tr></thead><tbody>
 {{range .Clients}}
-<tr><td><strong>{{.Name}}</strong><div class="sub mono">gwa_{{.Prefix}}_••••</div></td><td class="mono">{{.DeviceID}}</td><td>{{if .CanGroup}}Personal + grup otomatis{{else}}Personal saja{{end}}<div class="sub">Status device/pesan</div></td>
+<tr><td><strong>{{.Name}}</strong><div class="sub mono">gwa_{{.Prefix}}_••••</div></td><td class="mono">{{.DeviceID}}</td><td>{{if .CanGroup}}Personal + grup REST otomatis{{else}}Personal saja{{end}}<div class="sub">REST tools: {{if .CanRESTTools}}Enabled{{else}}Off{{end}}</div><div class="sub">MCP tools: {{if .CanMCPTools}}Enabled{{else}}Off{{end}}</div></td>
 <td>{{if .RevokedAt.Valid}}<span class="pill warn">Revoked</span>{{else if le .ExpiresAt $.NowUnix}}<span class="pill warn">Expired</span>{{else}}<span class="pill">Active</span>{{end}}<div class="sub">Expires: {{.ExpiryLabel}}</div></td>
 <td>{{if not .RevokedAt.Valid}}<form class="inline-form" method="post" action="{{$.Base}}/integrations/keys/{{.ID}}/revoke"><button class="revoke" type="submit">Revoke</button></form>{{else}}-{{end}}</td></tr>
 {{else}}<tr><td colspan="5">Belum ada API Key. Buat client di atas.</td></tr>{{end}}
@@ -244,5 +246,5 @@ form.api-form{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18p
 <div class="section"><div><h2>MCP integration guide</h2><p>Konfigurasi OAuth dan klien Claude / Hermes.</p></div></div>
 <div class="card"><p class="sub">Remote MCP memerlukan HTTPS publik dan OAuth yang dikonfigurasi benar. Izin setiap tool dan device harus diterapkan server-side sebelum diberikan ke pengguna eksternal.</p><a class="link" href="https://github.com/ruangsanadindonesia-art/go-whatsapp-web-multidevice/blob/main/docs/mcp-oauth.md">Lihat panduan MCP OAuth</a></div>
 {{end}}
-<footer>GoWA Integration Administration · Private API Keys · No plaintext secrets stored</footer>
+<footer>GoWA Integration Administration · Scoped API Keys · REST and MCP integration</footer>
 </main></body></html>`))
