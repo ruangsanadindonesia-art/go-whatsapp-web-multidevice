@@ -35,6 +35,8 @@ type privateAPIKey struct {
 	RevokedAt  sql.NullInt64
 }
 
+func (k privateAPIKey) ExpiryLabel() string { return time.Unix(k.ExpiresAt,0).UTC().Format("02 Jan 2006") }
+
 type privateAPISendRecord struct {
 	ID          string
 	KeyID       string
