@@ -1,6 +1,8 @@
 # PRD — Private External API & MCP Management for GoWA
 
 Status: APPROVED DIRECTION / IMPLEMENTATION PARTIAL (2026-11-03)
+
+Admin access: set `APP_INTEGRATIONS_ADMIN_USERS=admin-name` (comma-separated existing unrestricted Basic Auth users) in server configuration before using `/integrations`. If unset, the page denies access, including otherwise-unrestricted Basic Auth accounts. No credentials are exposed or modified.
 Repository: ruangsanadindonesia-art/go-whatsapp-web-multidevice
 Related: [GoWA MCP / Dashboard PRD](prd-gowa-mcp-dashboard-integration.md)
 
@@ -8,7 +10,7 @@ Related: [GoWA MCP / Dashboard PRD](prd-gowa-mcp-dashboard-integration.md)
 
 1. External access is a **private integration**, with manually provisioned and revocable client identities, not open self-registration.
 2. The first supported external REST v1 use cases are **send message, message/device send status, and webhook subscriptions**.
-3. **REST group sending is automatic only for an explicitly granted client** with \`send:group\`; default deny. This decision does not remove human approval for direct Claude/Hermes MCP group sends in the existing PRD.
+3. **REST group sending is automatic only for an explicitly granted client** with `send:group`; default deny. This decision does not remove human approval for direct Claude/Hermes MCP group sends in the existing PRD.
 4. Create a GoWA-owned UI page covering **REST API and MCP management**. Do not expose password/token contents in the UI.
 5. Preserve existing REST/Basic Auth, MCP OAuth, Dashboard business outbox and Hermes CS Bridge pathways.
 
@@ -22,12 +24,12 @@ Dashboard business message -> Dashboard business validation/outbox -> Existing R
 
 ### Permissions (proposed)
 
-- \`device:status\`, \`message:send:personal\`, \`message:send:group\`, \`message:status\`, \`webhook:manage\`.
-- \`send:group\` requires a named client, explicit device grant, rate/burst caps, recipient eligibility, consent/allowed-use policy and immediate revoke.
+- `device:status`, `message:send:personal`, `message:send:group`, `message:status`, `webhook:manage`.
+- `send:group` requires a named client, explicit device grant, rate/burst caps, recipient eligibility, consent/allowed-use policy and immediate revoke.
 - Default every new client to **no device grants / no actions**; operator adds least privilege.
 - Origin/principal is derived from authenticated server-side identity, never caller-supplied metadata.
 - An API key cannot be used against existing privileged REST or MCP endpoints to bypass policy. Existing Basic Auth remains distinct from v1 credentials.
-- Device \`cs-ai\` stays behind the existing Hermes CS Bridge for lead/CRM workflows. No private key is granted generic raw send to this device.
+- Device `cs-ai` stays behind the existing Hermes CS Bridge for lead/CRM workflows. No private key is granted generic raw send to this device.
 - MCP direct group requests still require durable human approval per occurrence.
 
 ## Initial REST contract (proposal, not implemented)
@@ -42,7 +44,7 @@ Dashboard business message -> Dashboard business validation/outbox -> Existing R
 | GET | /api/v1/webhooks | webhook:manage | Show subscriptions |
 | DELETE | /api/v1/webhooks/{id} | webhook:manage | Revoke subscription |
 
-**API v1 responses:** request_id, transport state, wa_message_id when available, explicit error_code; SENT is not DELIVERED or READ. Support \`Idempotency-Key\`, deterministic duplicate responses, UNCERTAIN state for ambiguous timeout, and avoid blind retries.
+**API v1 responses:** request_id, transport state, wa_message_id when available, explicit error_code; SENT is not DELIVERED or READ. Support `Idempotency-Key`, deterministic duplicate responses, UNCERTAIN state for ambiguous timeout, and avoid blind retries.
 
 **Webhook:** per-client scoped events, HMAC signature, timestamp, event_id, retry with bounded backoff and replay deduplication. Never include credentials or unredacted sensitive data by default. Validate callback endpoints against SSRF and DNS/redirect attacks.
 
@@ -50,10 +52,10 @@ Dashboard business message -> Dashboard business validation/outbox -> Existing R
 
 ## Management UI stages
 
-- **Stage 1, implemented in this change:** \`/integrations\` shows current REST Basic identities (usernames and configured device scopes only), MCP enablement/OAuth state, six existing tool categories and documentation. It is authenticated, unavailable when Basic Auth is unset, and denies device-restricted Basic users. It is read-only: no false API Key creation or permission controls.
+- **Stage 1, implemented in this change:** `/integrations` shows current REST Basic identities (usernames and configured device scopes only), MCP enablement/OAuth state, six existing tool categories and documentation. It is authenticated, unavailable when Basic Auth is unset, and denies device-restricted Basic users. It also requires an explicit `APP_INTEGRATIONS_ADMIN_USERS` allowlist. It is read-only: no false API Key creation or permission controls.
 - **Stage 2, not implemented:** API client create/revoke/rotate, per-client device/action grants, audit history, send quotas and webhook management. Controls are enabled only when backed by tested server-side policy and persistent token hashing.
 - **Stage 3, not implemented:** MCP OAuth principal/client listing, granular MCP tool/device grants, revocation, group approval queue and audited management operations. Requires authenticated operator role + CSRF protection.
-- **UI ownership:** GoWA backend serves \`/integrations\` independent of third-party \`aldinokemal/gowa-ui\` releases. Adding it to the upstream UI's navigation requires an organization-owned UI build/fork or an upstream contribution; do not claim upstream navigation is changed by this PR.
+- **UI ownership:** GoWA backend serves `/integrations` independent of third-party `aldinokemal/gowa-ui` releases. Adding it to the upstream UI's navigation requires an organization-owned UI build/fork or an upstream contribution; do not claim upstream navigation is changed by this PR.
 
 ## Acceptance and verification
 

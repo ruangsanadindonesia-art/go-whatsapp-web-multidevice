@@ -71,6 +71,14 @@ func integrationsPageDataFor(username, tab string) integrationsPageData {
 	return data
 }
 
+func integrationsAdminAllowed(username string) bool {
+	if username == "" { return false }
+	for _, user := range strings.Split(config.AppIntegrationsAdminUsersRaw, ",") {
+		if strings.TrimSpace(user) == username { return true }
+	}
+	return false
+}
+
 func registerIntegrationsPage(router fiber.Router) {
 	router.Get("/integrations", func(c fiber.Ctx) error {
 		c.Set("Cache-Control", "no-store")
@@ -86,7 +94,7 @@ func registerIntegrationsPage(router fiber.Router) {
 			return c.Status(fiber.StatusServiceUnavailable).SendString("API/MCP Management requires APP_BASIC_AUTH")
 		}
 		username := authUsername(c)
-		if username == "" || isRestrictedAccount(username) {
+		if !integrationsAdminAllowed(username) || isRestrictedAccount(username) {
 			return c.SendStatus(fiber.StatusForbidden)
 		}
 

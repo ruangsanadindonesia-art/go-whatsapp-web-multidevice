@@ -107,6 +107,9 @@ func initEnvConfig() {
 	if v := viper.GetString("app_basic_auth_devices"); v != "" {
 		config.AppBasicAuthDevicesRaw = v
 	}
+	if v := viper.GetString("app_integrations_admin_users"); v != "" {
+		config.AppIntegrationsAdminUsersRaw = v
+	}
 	if envBasePath := viper.GetString("app_base_path"); envBasePath != "" {
 		config.AppBasePath = envBasePath
 	}

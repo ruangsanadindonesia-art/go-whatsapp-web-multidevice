@@ -13,9 +13,11 @@ import (
 func TestIntegrationsPageFailClosedAndScoped(t *testing.T) {
 	prevCredentials := config.AppBasicAuthCredential
 	prevDevices := config.AppBasicAuthDevices
+	prevAdmins := config.AppIntegrationsAdminUsersRaw
 	t.Cleanup(func() {
 		config.AppBasicAuthCredential = prevCredentials
 		config.AppBasicAuthDevices = prevDevices
+		config.AppIntegrationsAdminUsersRaw = prevAdmins
 	})
 
 	app := fiber.New()
@@ -34,6 +36,7 @@ func TestIntegrationsPageFailClosedAndScoped(t *testing.T) {
 	}
 
 	config.AppBasicAuthCredential = []string{"admin:secret"}
+	config.AppIntegrationsAdminUsersRaw = "admin"
 	config.AppBasicAuthDevices = map[string][]string{"admin": {"dev-a"}}
 	response, err = app.Test(httptest.NewRequest("GET", "/integrations", nil))
 	if err != nil { t.Fatal(err) }
@@ -51,11 +54,13 @@ func TestIntegrationsPageDisplaysRealStateWithoutSecrets(t *testing.T) {
 	t.Cleanup(func() {
 		config.AppBasicAuthCredential = prevCredentials
 		config.AppBasicAuthDevices = prevDevices
+		config.AppIntegrationsAdminUsersRaw = prevAdmins
 		config.McpEnabled = prevMCP
 		config.McpOAuthEnabled = prevOAuth
 	})
 
 	config.AppBasicAuthCredential = []string{"admin:never-display-this", "service:other-secret"}
+	config.AppIntegrationsAdminUsersRaw = "admin"
 	config.AppBasicAuthDevices = map[string][]string{"service": {"device-finance"}}
 	config.McpEnabled = true
 	config.McpOAuthEnabled = false
@@ -96,9 +101,11 @@ func TestIntegrationsPageEscapesConfiguredUsernames(t *testing.T) {
 	t.Cleanup(func() {
 		config.AppBasicAuthCredential = prevCredentials
 		config.AppBasicAuthDevices = prevDevices
+		config.AppIntegrationsAdminUsersRaw = prevAdmins
 	})
 
 	config.AppBasicAuthCredential = []string{"admin:secret", "<script>:secret"}
+	config.AppIntegrationsAdminUsersRaw = "admin"
 	config.AppBasicAuthDevices = map[string][]string{}
 	app := fiber.New()
 	app.Use(func(c fiber.Ctx) error {

@@ -18,6 +18,8 @@ var (
 	// accounts to those devices and to messaging endpoints; parsed into AppBasicAuthDevices
 	// at REST startup. Unlisted accounts keep full access.
 	AppBasicAuthDevicesRaw = ""
+	// Explicit allowlist for API/MCP management inventory; unrestricted Basic users are not automatically admins.
+	AppIntegrationsAdminUsersRaw = ""
 	AppBasicAuthDevices    = map[string][]string{}
 	AppBasePath            = ""
 	AppTrustedProxies      []string // Trusted proxy IP ranges (e.g., "0.0.0.0/0" for all, or specific CIDRs)
