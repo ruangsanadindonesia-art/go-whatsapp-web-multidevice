@@ -49,6 +49,7 @@ func TestIntegrationsPageFailClosedAndScoped(t *testing.T) {
 func TestIntegrationsPageDisplaysRealStateWithoutSecrets(t *testing.T) {
 	prevCredentials := config.AppBasicAuthCredential
 	prevDevices := config.AppBasicAuthDevices
+	prevAdmins := config.AppIntegrationsAdminUsersRaw
 	prevMCP := config.McpEnabled
 	prevOAuth := config.McpOAuthEnabled
 	t.Cleanup(func() {
@@ -98,6 +99,7 @@ func TestIntegrationsPageDisplaysRealStateWithoutSecrets(t *testing.T) {
 func TestIntegrationsPageEscapesConfiguredUsernames(t *testing.T) {
 	prevCredentials := config.AppBasicAuthCredential
 	prevDevices := config.AppBasicAuthDevices
+	prevAdmins := config.AppIntegrationsAdminUsersRaw
 	t.Cleanup(func() {
 		config.AppBasicAuthCredential = prevCredentials
 		config.AppBasicAuthDevices = prevDevices
