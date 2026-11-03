@@ -3,6 +3,7 @@ package cmd
 import (
  "encoding/json"
  "net/url"
+ "time"
  "strings"
 
  "github.com/aldinokemal/go-whatsapp-web-multidevice/config"
@@ -53,6 +54,12 @@ func newPrivateLegacyToolAuth(store *privateAPIStore, backend privateAPIBackend,
   }
   if !key.CanGroup && privateLegacyWritesToGroup(c,route) {
    return privateAPIError(c,403,"GROUP_SEND_NOT_ALLOWED")
+  }
+  // Shared rate bucket across v1 text, legacy REST sends and key-based MCP.
+  // This prevents a newly broadened key from bypassing the v1 send cap.
+  if c.Method()==fiber.MethodPost && strings.HasPrefix(route,"/send/") &&
+     !store.AllowSend(key.ID,time.Now()) {
+   return privateAPIError(c,429,"RATE_LIMITED")
   }
   c.Locals("private_legacy_authorized",true)
   c.Locals("private_api_key",key)
