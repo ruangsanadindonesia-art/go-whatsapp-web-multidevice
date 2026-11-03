@@ -113,6 +113,13 @@ func privateMCPToolPolicy(raw json.RawMessage, key privateAPIKey, backend privat
   default: return "MCP_GROUP_APPROVAL_REQUIRED"
   }
  }
+ if params.Name=="whatsapp_schedule" {
+  // A schedule ID can identify a group send even when the recipient is
+  // absent from this tool call. Until an approval service can validate the
+  // schedule target, only discovery is safe for API-key-driven MCP.
+  action:=privateMCPArg(params.Arguments,"action")
+  if action!="list" && action!="get" {return "MCP_GROUP_APPROVAL_REQUIRED"}
+ }
  if params.Name=="whatsapp_message" && strings.HasSuffix(phone,"@g.us") {
   return "MCP_GROUP_APPROVAL_REQUIRED"
  }
