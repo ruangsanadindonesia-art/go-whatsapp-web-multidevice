@@ -89,7 +89,11 @@ func registerIntegrationsPage(router fiber.Router, stores ...*privateAPIStore) {
 	if len(stores) > 0 { keyStore = stores[0] }
 	router.Get("/integrations", func(c fiber.Ctx) error {
 		c.Set("Cache-Control", "no-store")
-		c.Set("Referrer-Policy", "no-referrer")
+		// The management page contains same-origin POST forms for API key create
+		// and revoke. A no-referrer policy can cause browsers to send Origin:
+		// null on those submissions, which safeSameOrigin correctly denies.
+		// Use the established web login policy to preserve CSRF protection.
+		c.Set("Referrer-Policy", webReferrerPolicy)
 		c.Set("X-Content-Type-Options", "nosniff")
 		c.Set("X-Frame-Options", "DENY")
 		c.Set("Content-Security-Policy",

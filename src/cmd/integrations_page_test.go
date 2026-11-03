@@ -3,6 +3,7 @@ package cmd
 import (
 	"io"
 	"net/http/httptest"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -71,7 +72,10 @@ func TestIntegrationsPageDisplaysRealStateWithoutSecrets(t *testing.T) {
 		c.Locals(webAuthUserKey, "admin")
 		return c.Next()
 	})
-	registerIntegrationsPage(app)
+	store, err := openPrivateAPIStore(filepath.Join(t.TempDir(), "private-api-keys.db"))
+	if err != nil { t.Fatal(err) }
+	defer store.Close()
+	registerIntegrationsPage(app, store)
 
 	for _, tc := range []struct{ path, needle string }{
 		{"/integrations", "device-finance"},
@@ -92,6 +96,14 @@ func TestIntegrationsPageDisplaysRealStateWithoutSecrets(t *testing.T) {
 		if response.Header.Get("Content-Security-Policy") == "" ||
 			response.Header.Get("Cache-Control") != "no-store" {
 			t.Fatalf("%s: missing page security headers", tc.path)
+		}
+		// Browser POST forms for create/revoke must preserve the same-origin
+		// signal. "no-referrer" can make Origin null and cause 403.
+		if policy := response.Header.Get("Referrer-Policy"); policy != webReferrerPolicy {
+			t.Fatalf("%s: referrer policy %q; want %q for same-origin admin forms", tc.path, policy, webReferrerPolicy)
+		}
+		if tc.path == "/integrations" && !strings.Contains(body, "action=\"/integrations/keys\"") {
+			t.Fatal("integrations page missing API key form")
 		}
 	}
 }
