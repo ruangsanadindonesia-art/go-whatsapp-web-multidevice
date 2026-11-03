@@ -2,6 +2,7 @@ package cmd
 
 import (
  "encoding/json"
+ "net/url"
  "strings"
 
  "github.com/aldinokemal/go-whatsapp-web-multidevice/config"
@@ -105,6 +106,14 @@ func privateLegacyWritesToGroup(c fiber.Ctx,route string) bool {
  // A schedule resume may trigger a previously configured group send,
  // whose recipient is not in this request. Require the group grant.
  if strings.HasPrefix(route,"/send/schedules/") { return true }
+ if route=="/send/presence" {return false}
+ decoded,err:=url.PathUnescape(route)
+ if err!=nil {return true}
+ if strings.HasPrefix(decoded,"/chat/") {
+  // Chat JIDs are route parameters. Checking only the body lets callers
+  // mutate a group with an unrelated personal phone field.
+  return strings.Contains(strings.ToLower(decoded),"@g.us")
+ }
  var phone, chatJID string
  kind:=strings.ToLower(strings.TrimSpace(c.Get("Content-Type")))
  if strings.HasPrefix(kind,"application/json") {
