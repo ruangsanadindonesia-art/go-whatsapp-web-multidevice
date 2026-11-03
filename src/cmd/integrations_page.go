@@ -5,6 +5,7 @@ import (
 	"html/template"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/aldinokemal/go-whatsapp-web-multidevice/config"
 	"github.com/gofiber/fiber/v3"
@@ -28,6 +29,9 @@ type integrationsPageData struct {
 	Tab            string
 	Username       string
 	Accounts       []integrationAccountView
+	Clients        []privateAPIKey
+	APIKeysEnabled bool
+	NowUnix        int64
 	MCPEnabled     bool
 	OAuthEnabled   bool
 	MCPPath        string
@@ -45,7 +49,8 @@ func integrationsPageDataFor(username, tab string) integrationsPageData {
 		MCPEnabled:   config.McpEnabled,
 		OAuthEnabled: config.McpEnabled && config.McpOAuthEnabled,
 		MCPPath:      strings.TrimRight(config.AppBasePath, "/") + "/mcp",
-		APIClients:   "Belum ada API Key v1. REST existing masih memakai Basic Auth.",
+		APIClients:   "Private API v1 menggunakan Bearer Key; REST existing tetap Basic Auth.",
+		NowUnix:      time.Now().UTC().Unix(),
 		MCPAuth:      "Basic Auth (legacy)",
 		LegacyCount:  len(config.AppBasicAuthCredential),
 	}
@@ -79,14 +84,16 @@ func integrationsAdminAllowed(username string) bool {
 	return false
 }
 
-func registerIntegrationsPage(router fiber.Router) {
+func registerIntegrationsPage(router fiber.Router, stores ...*privateAPIStore) {
+	var keyStore *privateAPIStore
+	if len(stores) > 0 { keyStore = stores[0] }
 	router.Get("/integrations", func(c fiber.Ctx) error {
 		c.Set("Cache-Control", "no-store")
 		c.Set("Referrer-Policy", "no-referrer")
 		c.Set("X-Content-Type-Options", "nosniff")
 		c.Set("X-Frame-Options", "DENY")
 		c.Set("Content-Security-Policy",
-			"default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'")
+			"default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'")
 
 		// An installation without Basic Auth must never expose admin inventory.
 		// The ordinary GoWA web/Basic middleware runs before this route.
@@ -102,8 +109,14 @@ func registerIntegrationsPage(router fiber.Router) {
 		if c.Query("tab") == "mcp" {
 			tab = "mcp"
 		}
+		data := integrationsPageDataFor(username, tab)
+		if keyStore != nil {
+			clients, err := keyStore.List(c.Context())
+			if err != nil { return c.SendStatus(fiber.StatusServiceUnavailable) }
+			data.Clients, data.APIKeysEnabled = clients, true
+		}
 		var out bytes.Buffer
-		if err := integrationsPageTemplate.Execute(&out, integrationsPageDataFor(username, tab)); err != nil {
+		if err := integrationsPageTemplate.Execute(&out, data); err != nil {
 			return c.SendStatus(fiber.StatusInternalServerError)
 		}
 		c.Type("html")
@@ -118,7 +131,7 @@ var integrationsPageTemplate = template.Must(template.New("integrations").Parse(
 <title>API &amp; MCP Management | GoWA</title>
 <style>
 :root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#203c36;background:#f6f5f0}
-*{box-sizing:border-box}body{margin:0}a{color:inherit}button{font:inherit}
+*{box-sizing:border-box}body{margin:0}a{color:inherit}button,input{font:inherit}
 .shell{max-width:1160px;margin:0 auto;padding:0 30px 70px}
 .top{height:72px;border-bottom:1px solid #dce2dc;background:#fff;display:flex;align-items:center}
 .topinner{max-width:1160px;width:100%;margin:auto;padding:0 30px;display:flex;align-items:center;justify-content:space-between;gap:16px}
@@ -161,8 +174,8 @@ tr:last-child td{border-bottom:0}
 ul{margin:12px 0 0;padding-left:19px;color:#50645a;font-size:13px;line-height:1.9}
 .tool-list{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:0;list-style:none}
 .tool-list li{border:1px solid #e2eae2;border-radius:9px;padding:9px 12px;background:#fafcf9;font:12px ui-monospace,Menlo,Consolas,monospace}
-footer{font-size:12px;color:#7c897e;border-top:1px solid #e0e5df;margin-top:34px;padding-top:19px}
-@media(max-width:730px){.shell{padding:0 17px 48px}.topinner{padding:0 17px}.topright span{display:none}.grid,.two{grid-template-columns:1fr}.tabs{overflow-x:auto}.card{padding:18px}}
+form.api-form{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px}.api-form label{display:flex;flex-direction:column;gap:6px;color:#53685d;font-size:12px;font-weight:650}.api-form input[type=text]{border:1px solid #cddbd2;border-radius:8px;padding:11px 12px;font-size:14px;background:#fff;color:#213e35;max-width:100%}.api-form .full{grid-column:1/-1}.api-form .check{display:flex;flex-direction:row;align-items:center;gap:10px;line-height:1.6}.api-form button,button.revoke{border:0;background:#28564c;color:white;border-radius:8px;padding:10px 16px;cursor:pointer;font-weight:700}.api-form button{width:fit-content}.revoke{background:#a44235!important;font-size:12px}button:hover{filter:brightness(.92)}.inline-form{display:inline-block}footer{font-size:12px;color:#7c897e;border-top:1px solid #e0e5df;margin-top:34px;padding-top:19px}
+@media(max-width:730px){.shell{padding:0 17px 48px}.topinner{padding:0 17px}.topright span{display:none}.grid,.two,.api-form{grid-template-columns:1fr}.tabs{overflow-x:auto}.card{padding:18px}}
 </style></head><body>
 <header class="top"><div class="topinner">
 <a class="brand" href="{{.Base}}/"><span class="logo">G</span><span>GoWA <span style="font-weight:450;color:#799086">/ Integrations</span></span></a>
@@ -171,26 +184,45 @@ footer{font-size:12px;color:#7c897e;border-top:1px solid #e0e5df;margin-top:34px
 <main class="shell">
 <p class="eyebrow">Platform administration</p>
 <h1>API &amp; MCP Management</h1>
-<p class="lede">Status integrasi, akun transport existing, dan konektivitas AI agent dalam satu tempat. Informasi berasal dari konfigurasi server aktif; halaman ini belum membuat atau mengubah credential.</p>
+<p class="lede">Kelola API Key privat untuk aplikasi eksternal dan pantau konektivitas REST API serta MCP. API Key memiliki izin perangkat khusus, terpisah dari akun login GoWA.</p>
 <nav class="tabs" aria-label="Integrasi">
 <a class="tab {{if eq .Tab "api"}}active{{end}}" href="{{.Base}}/integrations?tab=api" {{if eq .Tab "api"}}aria-current="page"{{end}}>REST API</a>
 <a class="tab {{if eq .Tab "mcp"}}active{{end}}" href="{{.Base}}/integrations?tab=mcp" {{if eq .Tab "mcp"}}aria-current="page"{{end}}>MCP / AI Agents</a>
 </nav>
 {{if eq .Tab "api"}}
 <div class="grid">
-<section class="card"><div class="kicker">Authentication saat ini</div><div class="metric small">Basic Auth</div><p class="sub">REST existing, belum API Key v1</p></section>
+<section class="card"><div class="kicker">Authentication API v1</div><div class="metric small">Bearer API Key</div><p class="sub">Scoped dan hashed; REST legacy tetap Basic Auth</p></section>
 <section class="card"><div class="kicker">Akun Basic terkonfigurasi</div><div class="metric">{{.LegacyCount}}</div><p class="sub">Termasuk akun administrator dan service</p></section>
 <section class="card"><div class="kicker">Akun dengan batas device</div><div class="metric">{{.ScopedCount}}</div><p class="sub">Menggunakan APP_BASIC_AUTH_DEVICES</p></section>
 </div>
-<div class="note"><strong>Private integration: desain disetujui, belum diaktifkan.</strong>API Key v1, permission <span class="mono">send:group</span>, client revoke, dan event subscriptions belum tersedia. Jangan membagikan credential administrator ke platform eksternal. REST existing tetap menggunakan kontrak dan otorisasi saat ini.</div>
+<div class="note"><strong>Private REST API v1</strong>Setiap key berlaku 90 hari, untuk satu device. Default hanya kirim pesan personal dan membaca status; kirim grup perlu izin terpisah. Idempotency-Key wajib ketika mengirim pesan. Webhook subscription dan izin granular MCP belum tersedia. Jangan gunakan key di frontend browser.</div>
+{{if .APIKeysEnabled}}
+<div class="section"><div><h2>Buat API Key</h2><p>Secret ditampilkan sekali. Pastikan device ID sesuai dengan perangkat pada dashboard.</p></div></div>
+<section class="card">
+<form class="api-form" method="post" action="{{.Base}}/integrations/keys">
+<label>Nama integrasi <input name="name" type="text" maxlength="80" placeholder="n8n Ruang Sanad" autocomplete="off" required></label>
+<label>Device ID <input name="device_id" type="text" maxlength="255" placeholder="ID device GoWA" autocomplete="off" required></label>
+<label class="check full"><input name="allow_group" type="checkbox" value="yes"> Izinkan pengiriman grup otomatis (hanya untuk integrasi terpercaya)</label>
+<div class="full"><button type="submit">Generate API Key</button></div>
+</form>
+</section>
+<div class="section"><div><h2>API Keys</h2><p>Kelola client, device, masa berlaku, dan pencabutan akses.</p></div></div>
+<div class="table-wrap"><table><thead><tr><th>Client</th><th>Device</th><th>Izin</th><th>Status</th><th>Aksi</th></tr></thead><tbody>
+{{range .Clients}}
+<tr><td><strong>{{.Name}}</strong><div class="sub mono">gwa_{{.Prefix}}_••••</div></td><td class="mono">{{.DeviceID}}</td><td>{{if .CanGroup}}Personal + grup otomatis{{else}}Personal saja{{end}}<div class="sub">Status device/pesan</div></td>
+<td>{{if .RevokedAt.Valid}}<span class="pill warn">Revoked</span>{{else if le .ExpiresAt $.NowUnix}}<span class="pill warn">Expired</span>{{else}}<span class="pill">Active</span>{{end}}<div class="sub">Expires: {{.ExpiresAt}} (Unix UTC)</div></td>
+<td>{{if not .RevokedAt.Valid}}<form class="inline-form" method="post" action="{{$.Base}}/integrations/keys/{{.ID}}/revoke"><button class="revoke" type="submit">Revoke</button></form>{{else}}-{{end}}</td></tr>
+{{else}}<tr><td colspan="5">Belum ada API Key. Buat client di atas.</td></tr>{{end}}
+</tbody></table></div>
+{{else}}<div class="note">API key storage tidak dikonfigurasi pada proses ini.</div>{{end}}
 <div class="section"><div><h2>Existing API identities</h2><p>Hanya metadata identitas, tidak menampilkan password atau token.</p></div></div>
 <div class="table-wrap"><table><thead><tr><th>Username</th><th>Akses existing</th><th>Device</th><th>Keterangan</th></tr></thead><tbody>
 {{range .Accounts}}<tr><td class="mono">{{.Username}}</td><td>{{.Scope}}</td><td class="mono">{{.Devices}}</td><td><span class="pill warn">Legacy</span></td></tr>{{else}}<tr><td colspan="4">Belum ada akun Basic Auth.</td></tr>{{end}}
 </tbody></table></div>
-<div class="section"><div><h2>API Documentation</h2><p>Kontrak REST yang tersedia saat ini, bukan API v1 baru.</p></div></div>
+<div class="section"><div><h2>API Documentation</h2><p>OpenAPI existing menggunakan Basic Auth. Endpoint API Key v1 menggunakan kontrak terpisah.</p></div></div>
 <div class="two">
 <div class="card"><h2>OpenAPI reference</h2><p class="sub">Endpoint send, chat, device, group, media, dan schedule terdokumentasi pada repository.</p><p><a class="link" href="https://github.com/ruangsanadindonesia-art/go-whatsapp-web-multidevice/blob/main/docs/openapi.yaml">Lihat OpenAPI existing</a></p></div>
-<div class="card"><h2>API v1 roadmap</h2><p class="sub">Tahap pertama: send message, send status, device status, webhook subscription, idempotency dan scoped client tokens.</p><p><a class="link" href="https://github.com/ruangsanadindonesia-art/go-whatsapp-web-multidevice/blob/main/docs/prd-gowa-external-api-platform.md">Lihat PRD API privat</a></p></div>
+<div class="card"><h2>API v1 roadmap</h2><p class="sub">API v1 tersedia untuk text send, message status dan device status. Webhook subscriptions belum tersedia.</p><p><a class="link" href="https://github.com/ruangsanadindonesia-art/go-whatsapp-web-multidevice/blob/main/docs/prd-gowa-external-api-platform.md">Lihat PRD API privat</a></p></div>
 </div>
 {{else}}
 <div class="grid">
@@ -212,5 +244,5 @@ footer{font-size:12px;color:#7c897e;border-top:1px solid #e0e5df;margin-top:34px
 <div class="section"><div><h2>MCP integration guide</h2><p>Konfigurasi OAuth dan klien Claude / Hermes.</p></div></div>
 <div class="card"><p class="sub">Remote MCP memerlukan HTTPS publik dan OAuth yang dikonfigurasi benar. Izin setiap tool dan device harus diterapkan server-side sebelum diberikan ke pengguna eksternal.</p><a class="link" href="https://github.com/ruangsanadindonesia-art/go-whatsapp-web-multidevice/blob/main/docs/mcp-oauth.md">Lihat panduan MCP OAuth</a></div>
 {{end}}
-<footer>GoWA Integration Administration · Read-only · No secrets displayed · No settings changed</footer>
+<footer>GoWA Integration Administration · Private API Keys · No plaintext secrets stored</footer>
 </main></body></html>`))
