@@ -2,6 +2,7 @@ package cmd
 
 import (
  "context"
+ "database/sql"
  "encoding/json"
  "io"
  "net/http/httptest"
@@ -12,6 +13,7 @@ import (
  "github.com/aldinokemal/go-whatsapp-web-multidevice/config"
  uimcp "github.com/aldinokemal/go-whatsapp-web-multidevice/ui/mcp"
  "github.com/gofiber/fiber/v3"
+ "github.com/aldinokemal/go-whatsapp-web-multidevice/pkg/sqlite"
 )
 
 func TestPrivateToolGrantsPersistence(t *testing.T) {
@@ -95,6 +97,8 @@ func TestPrivateLegacyRESTToolScope(t *testing.T) {
   {"GET","/devices/dev-one/status",token,"","",200},
   {"GET","/app/devices",token,"","",403},
   {"GET","/app/status",token,"","",200},
+  {"POST","/send/schedules/sched-one/resume",token,"","",403},
+  {"POST","/chat/archive",token,"","{\"chat_jid\":\"120363012345678901@g.us\"}",403},
  } {
   if got:=check(tc.method,tc.path,tc.key,tc.device,tc.body);got!=tc.want {t.Errorf("%s %s expected %d, got %d",tc.method,tc.path,tc.want,got)}
  }
@@ -116,6 +120,7 @@ func TestPrivateMCPAllSixCategoriesAndApproval(t *testing.T) {
   {"whatsapp_send","{\"phone\":\"120363012345678901@g.us\",\"type\":\"text\"}","MCP_GROUP_APPROVAL_REQUIRED"},
   {"whatsapp_group","{\"action\":\"remove_participants\"}","MCP_GROUP_APPROVAL_REQUIRED"},
   {"whatsapp_group","{\"action\":\"invite_link\",\"reset\":true}","MCP_GROUP_APPROVAL_REQUIRED"},
+  {"whatsapp_schedule","{\"action\":\"resume\"}","MCP_GROUP_APPROVAL_REQUIRED"},
   {"whatsapp_send","{\"phone\":\"628123456789\",\"device_id\":\"other\"}","DEVICE_NOT_ALLOWED"},
   {"whatsapp_send","{\"phone\":\"status@broadcast\"}","MCP_RECIPIENT_NOT_ALLOWED"},
   {"unknown_tool","{}","MCP_TOOL_NOT_ALLOWED"},
@@ -157,4 +162,26 @@ func TestPrivateMCPTransportPreAuth(t *testing.T) {
  if got:=request(noGrant,mutation);got!=403 {t.Errorf("non-MCP key accepted: %d",got)}
  if got:=request(canMCP,mutation);got!=403 {t.Errorf("group mutation allowed: %d",got)}
  if got:=request(canMCP,"[{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\"}]");got!=400 {t.Errorf("MCP JSON batch accepted: %d",got)}
+}
+
+func TestPrivateToolSchemaUpgradeOldSQLite(t *testing.T) {
+ path:=filepath.Join(t.TempDir(),"legacy.db")
+ db,err:=sql.Open(sqlite.DriverName,sqlite.FormatChatStorageURI("file:"+filepath.ToSlash(path),true,true))
+ if err!=nil{t.Fatal(err)}
+ // Exact pre-feature key schema lacks the two new tool grants.
+ _,err=db.Exec("CREATE TABLE private_api_keys ("+
+  "id TEXT PRIMARY KEY, name TEXT NOT NULL, prefix TEXT NOT NULL UNIQUE,"+
+  "token_hash TEXT NOT NULL UNIQUE, device_id TEXT NOT NULL, can_send_group INTEGER NOT NULL DEFAULT 0,"+
+  "created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL, revoked_at INTEGER)")
+ if err!=nil{t.Fatal(err)}
+ if err:=db.Close();err!=nil{t.Fatal(err)}
+ store,err:=openPrivateAPIStore(path)
+ if err!=nil{t.Fatalf("upgrade failed: %v",err)}
+ defer store.Close()
+ _,token,err:=store.Create(context.Background(),"legacy-compatible","one",false)
+ if err!=nil{t.Fatal(err)}
+ key,valid,err:=store.Authenticate(context.Background(),token)
+ if err!=nil || !valid || key.CanRESTTools || key.CanMCPTools {
+  t.Fatalf("migration should retain default-deny: %v %v %+v",valid,err,key)
+ }
 }
