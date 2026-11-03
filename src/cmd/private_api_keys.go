@@ -165,7 +165,7 @@ func (s *privateAPIStore) Revoke(ctx context.Context, id string) (bool, error) {
 }
 
 func (s *privateAPIStore) Authenticate(ctx context.Context, raw string) (privateAPIKey, bool, error) {
-	parts := strings.Split(raw, "_")
+	parts := strings.SplitN(raw, "_", 3)
 	if len(parts) != 3 || parts[0] != "gwa" || len(parts[1]) != 12 || len(parts[2]) != 43 {
 		return privateAPIKey{}, false, nil
 	}
