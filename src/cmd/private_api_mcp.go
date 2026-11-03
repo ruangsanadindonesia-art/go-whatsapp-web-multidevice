@@ -2,6 +2,7 @@ package cmd
 
 import (
  "bytes"
+ "context"
  "encoding/json"
  "io"
  "strings"
@@ -90,7 +91,7 @@ func privateMCPToolPolicy(raw json.RawMessage, key privateAPIKey, backend privat
  }
  deviceID:=privateMCPArg(params.Arguments,"device_id")
  if deviceID!="" {
-  _,resolved,err:=backend.Resolve(nil,deviceID)
+  _,resolved,err:=backend.Resolve(context.Background(),deviceID)
   if err!=nil || resolved!=key.DeviceID {return "DEVICE_NOT_ALLOWED"}
  }
  phone:=privateMCPArg(params.Arguments,"phone")
