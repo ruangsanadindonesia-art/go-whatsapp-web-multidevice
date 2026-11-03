@@ -128,6 +128,21 @@ func restServer(_ *cobra.Command, _ []string) {
 		}()
 	}
 
+	// Private API v1 must be registered before global Basic Auth so Bearer keys
+	// authenticate only to these exact routes. A storage failure disables v1
+	// without preventing existing WhatsApp/CS integrations from starting.
+	privateKeys, privateKeysErr := openPrivateAPIStore(defaultPrivateAPIStorePath())
+	if privateKeysErr != nil {
+		logrus.Errorf("[PRIVATE_API] disabled: key storage unavailable: %v", privateKeysErr)
+	} else {
+		defer func() {
+			if err := privateKeys.Close(); err != nil {
+				logrus.Warnf("[PRIVATE_API] storage close: %v", err)
+			}
+		}()
+		registerPrivateIntegrationAPI(app, config.AppBasePath, privateKeys, productionPrivateAPIBackend(dm))
+	}
+
 	if len(config.AppBasicAuthCredential) > 0 {
 		account := make(map[string]string)
 		for _, basicAuth := range config.AppBasicAuthCredential {
@@ -226,7 +241,10 @@ func restServer(_ *cobra.Command, _ []string) {
 	registerUIRoute(apiGroup, uiCtx)
 
 	// Authenticated, fail-closed API/MCP integration overview (not device-scoped).
-	registerIntegrationsPage(apiGroup)
+	registerIntegrationsPage(apiGroup, privateKeys)
+	if privateKeys != nil {
+		registerPrivateAPIKeyAdmin(apiGroup, privateKeys, productionPrivateAPIBackend(dm))
+	}
 
 	// CS AI settings page, proxied to hermes-cs-bridge (no-op unless configured).
 	registerCSAIProxy(apiGroup)
