@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"html"
 	"strings"
 
@@ -70,6 +69,3 @@ func registerPrivateAPIKeyAdmin(router fiber.Router, store *privateAPIStore, bac
 		return c.Redirect().To(strings.TrimRight(config.AppBasePath,"/")+"/integrations?tab=api")
 	})
 }
-
-// Verify production routes can use a context injected by DeviceManager.
-var _ = context.Background
