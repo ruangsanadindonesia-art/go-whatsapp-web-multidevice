@@ -1,7 +1,6 @@
 package cmd
 
 import (
- "context"
  "encoding/json"
  "strings"
 
@@ -71,7 +70,7 @@ func privateLegacyRouteAllowed(method, route string, allowGroup bool) bool {
  }
  if strings.HasPrefix(route,"/app/") {
   switch route {
-  case "/app/status", "/app/devices": return method=="GET"
+  case "/app/status": return method=="GET"
   case "/app/login", "/app/login-with-code", "/app/logout", "/app/reconnect": return method=="GET"
   }
   return false
@@ -122,4 +121,3 @@ func privateLegacyWritesToGroup(c fiber.Ctx,route string) bool {
   phone=="status@broadcast" || strings.HasSuffix(phone,"@broadcast")
 }
 
-var _ = context.Background
