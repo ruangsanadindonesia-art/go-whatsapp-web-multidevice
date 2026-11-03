@@ -3,6 +3,7 @@ package cmd
 import (
 	"io"
 	"net/http/httptest"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -71,7 +72,10 @@ func TestIntegrationsPageDisplaysRealStateWithoutSecrets(t *testing.T) {
 		c.Locals(webAuthUserKey, "admin")
 		return c.Next()
 	})
-	registerIntegrationsPage(app)
+	store, err := openPrivateAPIStore(filepath.Join(t.TempDir(), "private-api-keys.db"))
+	if err != nil { t.Fatal(err) }
+	defer store.Close()
+	registerIntegrationsPage(app, store)
 
 	for _, tc := range []struct{ path, needle string }{
 		{"/integrations", "device-finance"},
