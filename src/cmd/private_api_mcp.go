@@ -99,10 +99,13 @@ func privateMCPToolPolicy(raw json.RawMessage, key privateAPIKey, backend privat
  chatJID:=privateMCPArg(params.Arguments,"chat_jid")
  if params.Name=="whatsapp_send" {
   if phone=="" { return "INVALID_MCP_RECIPIENT" }
-  // API-key MCP messages to groups require a human approval workflow that
-  // has not yet been implemented. The REST v1 group grant does not bypass it.
-  if strings.HasSuffix(phone,"@g.us") {return "MCP_GROUP_APPROVAL_REQUIRED"}
-  if !privateMCPRecipientPersonal(phone) {return "MCP_RECIPIENT_NOT_ALLOWED"}
+  // API-key MCP messages to groups need a human approval workflow that
+  // does not exist yet. The exception is a group an administrator listed in
+  // APP_MCP_GROUP_ALLOWLIST, and only for a key with the Group grant.
+  if strings.HasSuffix(phone,"@g.us") {
+   if !privateMCPGroupAllowlisted(phone,config.AppMCPGroupAllowlistRaw) {return "MCP_GROUP_APPROVAL_REQUIRED"}
+   if !key.CanGroup {return "GROUP_SEND_NOT_ALLOWED"}
+  } else if !privateMCPRecipientPersonal(phone) {return "MCP_RECIPIENT_NOT_ALLOWED"}
  }
  if params.Name=="whatsapp_group" {
   action:=privateMCPArg(params.Arguments,"action")
@@ -137,6 +140,16 @@ func privateMCPArg(args map[string]json.RawMessage,key string) string {
  _=json.Unmarshal(args[key],&value)
  return strings.TrimSpace(value)
 }
+// privateMCPGroupAllowlisted reports whether jid is a well-formed group JID
+// listed in raw (comma separated, exact match).
+func privateMCPGroupAllowlisted(jid, raw string) bool {
+ if !privateAPIGroupJID.MatchString(jid) { return false }
+ for _,entry:=range strings.Split(raw,",") {
+  if strings.TrimSpace(entry)==jid { return true }
+ }
+ return false
+}
+
 func privateMCPRecipientPersonal(phone string) bool {
  _,isGroup,ok:=privateAPINormalizeRecipient(phone)
  return ok && !isGroup

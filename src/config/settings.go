@@ -20,6 +20,9 @@ var (
 	AppBasicAuthDevicesRaw = ""
 	// Explicit allowlist for API/MCP management inventory; unrestricted Basic users are not automatically admins.
 	AppIntegrationsAdminUsersRaw = ""
+	// Group JIDs that API-key MCP clients with the Group grant may send to
+	// (comma separated). Empty = MCP group sends stay blocked.
+	AppMCPGroupAllowlistRaw = ""
 	AppBasicAuthDevices    = map[string][]string{}
 	AppBasePath            = ""
 	AppTrustedProxies      []string // Trusted proxy IP ranges (e.g., "0.0.0.0/0" for all, or specific CIDRs)

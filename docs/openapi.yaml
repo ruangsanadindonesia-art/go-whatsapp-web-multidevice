@@ -4845,8 +4845,10 @@ paths:
         `initialize`, `notifications/initialized`, `ping`, `tools/list`,
         `tools/call`. Tools: `whatsapp_send`, `whatsapp_schedule`,
         `whatsapp_message`, `whatsapp_chat`, `whatsapp_group`,
-        `whatsapp_app`, always on the key's device. Group sends, group
-        changes and schedule changes return `MCP_GROUP_APPROVAL_REQUIRED`.
+        `whatsapp_app`, always on the key's device. Group changes,
+        schedule changes and group sends return `MCP_GROUP_APPROVAL_REQUIRED`,
+        except `whatsapp_send` to a group listed in `APP_MCP_GROUP_ALLOWLIST`
+        by a key with the Group grant (without it: `GROUP_SEND_NOT_ALLOWED`).
         Tool calls share the 30 per minute limit. Available only when MCP is
         enabled on the server.
       security:
@@ -4893,7 +4895,7 @@ paths:
         '401':
           $ref: '#/components/responses/PrivateUnauthorized'
         '403':
-          description: MCP_TOOLS_NOT_GRANTED, DEVICE_NOT_ALLOWED, MCP_METHOD_NOT_ALLOWED, MCP_TOOL_NOT_ALLOWED or MCP_GROUP_APPROVAL_REQUIRED
+          description: MCP_TOOLS_NOT_GRANTED, DEVICE_NOT_ALLOWED, MCP_METHOD_NOT_ALLOWED, MCP_TOOL_NOT_ALLOWED, MCP_GROUP_APPROVAL_REQUIRED or GROUP_SEND_NOT_ALLOWED
           content:
             application/json:
               schema:

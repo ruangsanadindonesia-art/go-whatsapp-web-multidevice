@@ -87,7 +87,9 @@ This endpoint exposes the same six consolidated tools available in GoWA:
 
 Compatible clients send `Authorization: Bearer <API_KEY>`, normal MCP Streamable HTTP JSON-RPC requests and, optionally, `X-Device-Id: <GRANTED_DEVICE_ID>`. Server-side checks enforce the canonical granted device even if a tool tries to override `device_id`. Batch JSON-RPC requests, unknown tools, or unsupported methods are denied.
 
-**Human approval limitation:** direct MCP sends to groups, group mutations and schedule mutations remain blocked with `MCP_GROUP_APPROVAL_REQUIRED` until a durable approval service is introduced. Group reads (info, participants, join requests, non-reset invite link) remain available. The separate REST Group checkbox does not bypass the MCP gate.
+**Human approval limitation:** direct MCP sends to groups, group mutations and schedule mutations remain blocked with `MCP_GROUP_APPROVAL_REQUIRED` until a durable approval service is introduced.
+
+**Exception: allowlisted groups.** An administrator can list group JIDs in `APP_MCP_GROUP_ALLOWLIST` (comma separated, in GoWA's `.env`, restart required). `whatsapp_send` to a listed group is then allowed for keys that also have the **Group** grant (otherwise `GROUP_SEND_NOT_ALLOWED`). Unlisted groups stay blocked, and the list never opens group management, schedule changes or message changes in groups. Keep the list short: every key with the Group grant can post to every listed group. Group reads (info, participants, join requests, non-reset invite link) remain available. The separate REST Group checkbox does not bypass the MCP gate.
 
 The original `/mcp` route continues using existing Basic Auth or OAuth, not private API Keys. Claude connectors that require OAuth should continue using that endpoint; a client supporting custom Bearer headers can use `/api/v1/mcp`.
 

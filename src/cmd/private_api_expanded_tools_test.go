@@ -215,3 +215,31 @@ func TestPrivateLegacyRESTSendRateLimit(t *testing.T) {
   if resp.StatusCode!=want {t.Fatalf("request %d got %d, expected %d",i+1,resp.StatusCode,want)}
  }
 }
+
+func TestPrivateMCPGroupAllowlist(t *testing.T) {
+ prev:=config.AppMCPGroupAllowlistRaw
+ t.Cleanup(func(){config.AppMCPGroupAllowlistRaw=prev})
+ config.AppMCPGroupAllowlistRaw=" 120363239125791211@g.us , not-a-jid "
+ backend:=privateAPIBackend{Resolve:func(ctx context.Context,id string)(context.Context,string,error){return ctx,"allowed",nil}}
+ withGroup:=privateAPIKey{DeviceID:"allowed",CanMCPTools:true,CanGroup:true}
+ noGroup:=privateAPIKey{DeviceID:"allowed",CanMCPTools:true}
+ call:=func(name,args string,key privateAPIKey) string {
+  return privateMCPToolPolicy(json.RawMessage("{\"name\":\""+name+"\",\"arguments\":"+args+"}"),key,backend)
+ }
+ for _,tc:=range []struct{name,args string;key privateAPIKey;want string}{
+  {"whatsapp_send","{\"phone\":\"120363239125791211@g.us\",\"type\":\"text\"}",withGroup,""},
+  {"whatsapp_send","{\"phone\":\"120363239125791211@g.us\",\"type\":\"text\"}",noGroup,"GROUP_SEND_NOT_ALLOWED"},
+  {"whatsapp_send","{\"phone\":\"120363000000000000@g.us\",\"type\":\"text\"}",withGroup,"MCP_GROUP_APPROVAL_REQUIRED"},
+  {"whatsapp_send","{\"phone\":\"not-a-jid\",\"type\":\"text\"}",withGroup,"MCP_RECIPIENT_NOT_ALLOWED"},
+  // Listing a group never opens group management or schedule changes.
+  {"whatsapp_group","{\"action\":\"leave\",\"group_id\":\"120363239125791211@g.us\"}",withGroup,"MCP_GROUP_APPROVAL_REQUIRED"},
+  {"whatsapp_schedule","{\"action\":\"cancel\"}",withGroup,"MCP_GROUP_APPROVAL_REQUIRED"},
+  {"whatsapp_message","{\"action\":\"revoke\",\"phone\":\"120363239125791211@g.us\"}",withGroup,"MCP_GROUP_APPROVAL_REQUIRED"},
+ } {
+  if got:=call(tc.name,tc.args,tc.key);got!=tc.want {t.Errorf("%s %s => %q expected %q",tc.name,tc.args,got,tc.want)}
+ }
+ config.AppMCPGroupAllowlistRaw=""
+ if got:=call("whatsapp_send","{\"phone\":\"120363239125791211@g.us\",\"type\":\"text\"}",withGroup);got!="MCP_GROUP_APPROVAL_REQUIRED" {
+  t.Errorf("empty allowlist must keep groups blocked, got %q",got)
+ }
+}
