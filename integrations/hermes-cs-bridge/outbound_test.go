@@ -20,6 +20,7 @@ func outboundFixture(t *testing.T) (*Bridge, *fakeSender, *Store, *fakeSink, *ti
 	cfg := testConfig()
 	cfg.OutboundToken = outboundTestToken
 	cfg.OutboundQuietAfterInbound = 2 * time.Minute
+	cfg.OutboundRequireSeenChat = true
 	b, sender, store := newTestBridge(t, cfg, &fakeAgent{reply: "Terima kasih"})
 	sink := &fakeSink{}
 	b.events = sink
@@ -328,5 +329,20 @@ func TestOutboundHealthAndTokenConfig(t *testing.T) {
 	t.Setenv("DASHBOARD_INGEST_TOKEN", "ingest-test-token-0123456789abcdef")
 	if cfg, err := loadConfig(); err != nil || cfg.OutboundQuietAfterInbound != 2*time.Minute {
 		t.Fatalf("valid config rejected: %v", err)
+	}
+}
+
+// Default config: a lead the admin contacted first (never wrote in) can be
+// followed up; the bridge does not require a prior inbound message.
+func TestOutboundUnseenChatAllowedByDefault(t *testing.T) {
+	b, snd, _, _, _ := outboundFixture(t)
+	b.cfg.OutboundRequireSeenChat = false
+	rec := outboundRequestFor(t, b, "/api/outbound", "Bearer "+outboundTestToken,
+		requestJSON("628999999@s.whatsapp.net", "Assalamu'alaikum Kak", "followup", 77))
+	if rec.Code != 200 {
+		t.Fatalf("expected 200 for admin-started chat, got %d: %s", rec.Code, rec.Body)
+	}
+	if len(snd.all()) != 1 {
+		t.Fatal("follow-up to admin-started chat was not sent")
 	}
 }

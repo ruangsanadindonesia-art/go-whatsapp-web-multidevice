@@ -187,7 +187,7 @@ Hermes tidak melihat pesan outbound di riwayat sesinya, jadi konteksnya disisipk
 - 🔒 Route di luar `/cs-ai` agar tidak diteruskan proxy GOWA ke internet. Tambahkan test yang memastikan `GET/POST /cs-ai/api/outbound` **tidak** ada.
 - 🔒 Tolak marker `[[`, tolak chat grup/status/admin, batasi panjang teks.
 - 🔒 Jangan log isi teks maupun token.
-- Endpoint tidak mengizinkan nomor sembarang: `chat_id` wajib JID. Dashboard hanya mengirim ke chat yang pernah masuk sebagai lead. Bridge tidak perlu memverifikasi riwayat, tapi **boleh** menolak `chat_id` yang belum pernah terlihat (`store.Phones` / `chats`) dengan 400 sebagai pengaman tambahan. Rekomendasi: aktifkan.
+- Endpoint tidak mengizinkan nomor sembarang: `chat_id` wajib JID. Dashboard hanya mengirim ke chat yang pernah masuk sebagai lead. Bridge tidak perlu memverifikasi riwayat, tapi **boleh** menolak `chat_id` yang belum pernah terlihat (`store.Phones` / `chats`) dengan 400 sebagai pengaman tambahan. Diatur lewat `OUTBOUND_REQUIRE_SEEN_CHAT` (default `false`, keputusan 17 Nov 2026): lead yang chat-nya dimulai admin dari HP CS tidak pernah tercatat sebagai pesan masuk, sehingga pengaman ini membuat follow-up mereka gagal permanen.
 
 ## 8. Test (wajib, di `outbound_test.go`, pakai `fakeSender`/`fakeAgent` yang sudah ada)
 

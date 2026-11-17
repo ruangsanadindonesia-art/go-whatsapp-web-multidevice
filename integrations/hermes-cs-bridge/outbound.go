@@ -90,9 +90,10 @@ func (b *Bridge) handleOutbound(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, http.StatusBadGateway, "send failed")
 		return
 	}
-	// This is an extra anti-broadcast guard: even a token holder cannot send
-	// to arbitrary strangers who never contacted this CS WhatsApp number.
-	if !b.store.HasSeenLeadChat(req.ChatID) {
+	// Optional anti-broadcast guard (OUTBOUND_REQUIRE_SEEN_CHAT=true): only
+	// chats that wrote to this CS number first. Off by default so leads an
+	// admin contacted first from the CS phone can be followed up too.
+	if b.cfg.OutboundRequireSeenChat && !b.store.HasSeenLeadChat(req.ChatID) {
 		jsonErr(w, http.StatusBadRequest, "invalid: chat belum pernah masuk")
 		return
 	}
