@@ -57,6 +57,10 @@ type Config struct {
 	// Dashboard-approved text outbound, authenticated separately from ingest.
 	OutboundToken             string
 	OutboundQuietAfterInbound time.Duration
+	// When true, outbound only goes to chats that wrote to the CS number
+	// first. Off by default: the Dashboard may follow up any CRM lead,
+	// including chats an admin started from the CS phone.
+	OutboundRequireSeenChat bool
 }
 
 func loadConfig() (Config, error) {
@@ -78,6 +82,7 @@ func loadConfig() (Config, error) {
 		DashboardURL:       strings.TrimRight(strings.TrimSpace(os.Getenv("DASHBOARD_URL")), "/"),
 		DashboardToken:     strings.TrimSpace(os.Getenv("DASHBOARD_INGEST_TOKEN")),
 		OutboundToken:      strings.TrimSpace(os.Getenv("OUTBOUND_TOKEN")),
+		OutboundRequireSeenChat: strings.EqualFold(strings.TrimSpace(os.Getenv("OUTBOUND_REQUIRE_SEEN_CHAT")), "true"),
 		DashboardOutboxDir: env("DASHBOARD_OUTBOX_DIR", "/data/outbox-dashboard"),
 		// No technical wording towards leads (Ruang Sanad CS rules).
 		FallbackMessage: env("FALLBACK_MESSAGE", "Terima kasih, Kak. Pesan Kakak sudah kami terima. Admin akan membalas di chat ini secepatnya."),
