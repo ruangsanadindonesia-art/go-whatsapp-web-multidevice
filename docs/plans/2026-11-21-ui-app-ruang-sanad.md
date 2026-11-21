@@ -100,11 +100,18 @@ Endpoint `GET /api/app/analytics/*` (query SQLite read-only, wajib scope `device
 
 ## 6. Hal yang masih perlu data atau keputusan
 
-1. Jam layanan CS (untuk waktu respons) dan target SLA, bila ada.
-2. Daftar fitur operasional prioritas di fase 3 (inbox, template, label, penugasan).
+Sudah dijawab (2026-11-21):
+- Jam layanan CS: 08:00–15:00 dan 19:00–21:00. Asumsi: WIB (`Asia/Jakarta`) dan berlaku setiap hari; bisa diubah lewat konfigurasi.
+- Jumlah CS: 1 orang. Analisis per agen tidak diperlukan; atribusi cukup membedakan `app` / `ai` / `phone`.
+
+Masih terbuka:
+1. Target SLA waktu respons, bila ada.
+2. Daftar fitur operasional prioritas di fase 3 (inbox, template, label).
 3. Apakah Dashboard Ruang Sanad bisa menyediakan read API (fase 4), dan siapa yang mengerjakannya.
-4. Berapa akun CS, dan apakah satu akun dipakai bersama. Akun bersama membuat atribusi per agen tidak bermakna.
+4. Logo dan warna resmi Ruang Sanad (fase 1).
 5. Opsional: minta lisensi ke `aldinokemal/gowa-ui`. Bila diberikan, `/app` bisa menggantikan `/` sepenuhnya.
+
+Todo implementasi: `docs/plans/2026-11-21-ui-app-implementation.md`.
 
 ## 7. Verifikasi per fase
 - `go test ./...`, `go vet ./...`, `go build` di `src/`.
