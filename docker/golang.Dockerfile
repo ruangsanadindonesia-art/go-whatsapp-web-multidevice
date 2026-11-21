@@ -1,4 +1,15 @@
 ############################
+# STEP 0 build the /app SPA (web/) into src/ui/webapp/dist
+############################
+FROM node:22-alpine3.23 AS web
+WORKDIR /web
+COPY ./web/package.json ./web/package-lock.json ./
+RUN npm ci
+COPY ./web .
+# vite.config.ts writes to ../src/ui/webapp/dist
+RUN mkdir -p /src/ui/webapp && npm run build
+
+############################
 # STEP 1 build executable binary
 ############################
 FROM golang:1.26-alpine3.23 AS builder
@@ -11,6 +22,7 @@ RUN go mod download
 
 # Copy source and build
 COPY ./src .
+COPY --from=web /src/ui/webapp/dist ./ui/webapp/dist
 RUN go build -ldflags="-w -s" -o /app/whatsapp
 
 #############################
