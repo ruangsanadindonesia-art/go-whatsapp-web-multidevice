@@ -21,6 +21,7 @@ import (
 	"github.com/aldinokemal/go-whatsapp-web-multidevice/ui/rest"
 	"github.com/aldinokemal/go-whatsapp-web-multidevice/ui/rest/helpers"
 	"github.com/aldinokemal/go-whatsapp-web-multidevice/ui/rest/middleware"
+	"github.com/aldinokemal/go-whatsapp-web-multidevice/ui/webapp"
 	"github.com/aldinokemal/go-whatsapp-web-multidevice/ui/websocket"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/basicauth"
@@ -198,6 +199,7 @@ func restServer(_ *cobra.Command, _ []string) {
 		rest.InitRestApp(r, appUsecase)
 		rest.InitRestCall(r, callUsecase)
 		rest.InitRestChat(r, chatUsecase)
+		rest.InitRestAnalytics(r, analyticsUsecase)
 		rest.InitRestSend(r, sendUsecase)
 		rest.InitRestSchedule(r, scheduleUsecase)
 		rest.InitRestUser(r, userUsecase)
@@ -256,6 +258,12 @@ func restServer(_ *cobra.Command, _ []string) {
 
 	// CS AI settings page, proxied to hermes-cs-bridge (no-op unless configured).
 	registerCSAIProxy(apiGroup)
+
+	// Ruang Sanad SPA at /panel (embedded build of web/).
+	if config.AppWebAppEnabled {
+		webapp.Register(apiGroup, config.AppBasePath)
+		registerWebAppAPI(apiGroup)
+	}
 
 	// Device-scoped operations (header-based). This must stay the LAST
 	// registration on apiGroup: Group("") registers a root "use" route that

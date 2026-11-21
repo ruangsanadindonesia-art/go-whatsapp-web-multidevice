@@ -4,6 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	domainAnalytics "github.com/aldinokemal/go-whatsapp-web-multidevice/domains/analytics"
+	analyticsinfra "github.com/aldinokemal/go-whatsapp-web-multidevice/infrastructure/analytics"
+	"github.com/aldinokemal/go-whatsapp-web-multidevice/pkg/servicehours"
 	"os"
 	"strings"
 	"time"
@@ -45,6 +48,7 @@ var (
 	appUsecase        domainApp.IAppUsecase
 	callUsecase       domainCall.ICallUsecase
 	chatUsecase       domainChat.IChatUsecase
+	analyticsUsecase  domainAnalytics.IAnalyticsUsecase
 	sendUsecase       domainSend.ISendUsecase
 	scheduleUsecase   domainSend.IScheduleUsecase
 	userUsecase       domainUser.IUserUsecase
@@ -125,6 +129,15 @@ func initEnvConfig() {
 	// default instead of being overwritten by the zero value of GetBool /
 	// GetDuration. viper.IsSet works equally well here (it does consult
 	// AutomaticEnv), so either guard is fine for new keys.
+	if v := viper.GetString("cs_service_hours"); v != "" {
+		config.CSServiceHoursRaw = v
+	}
+	if v := viper.GetString("cs_service_tz"); v != "" {
+		config.CSServiceTZ = v
+	}
+	if viper.GetString("app_webapp_enabled") != "" {
+		config.AppWebAppEnabled = viper.GetBool("app_webapp_enabled")
+	}
 	if viper.GetString("app_ui_enabled") != "" {
 		config.AppUIEnabled = viper.GetBool("app_ui_enabled")
 	}
@@ -383,6 +396,12 @@ func initFlags() {
 	)
 
 	// Web UI flags
+	rootCmd.PersistentFlags().BoolVarP(
+		&config.AppWebAppEnabled,
+		"webapp", "",
+		config.AppWebAppEnabled,
+		`serve the Ruang Sanad panel at "/panel" --webapp <bool>`,
+	)
 	rootCmd.PersistentFlags().BoolVarP(
 		&config.AppUIEnabled,
 		"ui-enabled", "",
@@ -739,6 +758,11 @@ func initApp() {
 	appUsecase = usecase.NewAppService(chatStorageRepo, dm)
 	callUsecase = usecase.NewCallService()
 	chatUsecase = usecase.NewChatService(chatStorageRepo)
+	serviceSchedule, err := servicehours.Parse(config.CSServiceHoursRaw, config.CSServiceTZ)
+	if err != nil {
+		logrus.Fatalf("invalid CS_SERVICE_HOURS/CS_SERVICE_TZ: %v", err)
+	}
+	analyticsUsecase = usecase.NewAnalyticsService(analyticsinfra.NewSQLiteReader(chatStorageDB), serviceSchedule)
 	baseSendUsecase := usecase.NewSendService(appUsecase, chatStorageRepo)
 	scheduleService := usecase.NewScheduleService(chatStorageRepo, baseSendUsecase, dm, config.PathStorages)
 	scheduleUsecase = scheduleService

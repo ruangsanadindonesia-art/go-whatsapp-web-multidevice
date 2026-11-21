@@ -31,8 +31,11 @@ enabled; both transports share the same device manager and usecases.
 - Chatwoot routing, live sync, and history: [Chatwoot infrastructure](src/infrastructure/chatwoot/AGENTS.md).
   Setup or routing-mode changes: [configuration](docs/chatwoot.md).
   Direct Postgres changes: [scoped guide](src/infrastructure/chatwoot/pgimport/AGENTS.md).
-- Embedded browser UI: `src/views/components/` and `src/views/index.html`. These are
-  plain Vue 3 modules loaded from CDN, with Fomantic UI and `[[`, `]]` delimiters.
+- Browser UIs: `/` serves the upstream gowa-ui dashboard, downloaded at runtime
+  (`src/infrastructure/uiasset`, `APP_UI_*`; not in this repo, unlicensed, do not
+  copy its source). `/panel` serves the Ruang Sanad SPA: source in `web/` (see
+  [web/AGENTS.md](web/AGENTS.md)), embedded from `src/ui/webapp/dist`, its API under
+  `/api/app/*`. GOWA already owns `/app/*` routes; never mount the SPA there.
 - Startup and configuration: `src/cmd/root.go`, `src/cmd/rest.go`,
   `src/cmd/helpers.go`, `src/config/settings.go`, and `src/.env.example`. Configuration
   and service wiring use package globals; flags override env/Viper and `.env` defaults.

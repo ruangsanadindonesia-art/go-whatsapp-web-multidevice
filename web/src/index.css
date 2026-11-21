@@ -1,0 +1,67 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/inter';
+@import '@fontsource/playfair-display/600.css';
+@import '@fontsource/playfair-display/600-italic.css';
+
+/* Ruang Sanad design system tokens (artifact 5vQZiEYWDGewb5BFEDT1eS, tokens.json).
+   Single light theme: the source has no dark mode. */
+@theme {
+  --color-teal-900: #0f3537;
+  --color-teal-800: #16484a;
+  --color-teal-600: #2e6466;
+  --color-teal-400: #5e8a8b;
+  --color-gold-600: #9c7f35;
+  --color-gold-500: #b79947;
+  --color-gold-300: #d9c48c;
+  --color-gold-100: #f1e7cc;
+  --color-cream-50: #fefbf7;
+  --color-cream-100: #fcf6ea;
+  --color-cream-200: #f5ecda;
+  --color-sage-300: #c9d0c7;
+  --color-success: #2f7a5b;
+  --color-danger: #a4432f;
+  --color-warning: #b98a1e;
+  --color-on-dark-muted: #bfd0cc;
+
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-sans: 'Inter Variable', 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+
+  --shadow-card: 0 1px 2px rgba(15, 53, 55, 0.06), 0 8px 24px rgba(15, 53, 55, 0.08);
+  --shadow-raised: 0 18px 48px rgba(15, 53, 55, 0.16);
+  --shadow-button: rgba(22, 72, 74, 0.32) 0px 10px 26px 0px;
+
+  --ease-calm: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+@layer base {
+  html,
+  body {
+    background: var(--color-cream-100);
+    color: var(--color-teal-800);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  ::selection {
+    background: var(--color-gold-100);
+  }
+  :focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(183, 153, 71, 0.45);
+  }
+}
+
+/* Eyebrow: Inter 600, 12px, 0.18em tracking, uppercase. Gold-600 is 3.6:1 on cream,
+   so eyebrows use teal-600 text with a gold rule instead (see ledger ruling). */
+.eyebrow {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-teal-600);
+}

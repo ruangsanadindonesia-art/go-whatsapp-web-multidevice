@@ -87,6 +87,16 @@ func isRestrictedAccount(username string) bool {
 // deviceResolver maps a requested device id (alias or JID) to its canonical id.
 type deviceResolver func(id string) (canonical string, found bool)
 
+// deviceFreeAppRoute reports whether p is a read-only /panel page or the
+// /api/app/me identity endpoint: allowed for restricted accounts without a
+// device check, since they expose no device data.
+func deviceFreeAppRoute(method, p string) bool {
+	if method != fiber.MethodGet && method != fiber.MethodHead {
+		return false
+	}
+	return p == "/panel" || strings.HasPrefix(p, "/panel/") || p == "/api/app/me"
+}
+
 // scopedRoute reports whether a restricted account may call method+p at all,
 // and whether the target device comes from the path (/devices/:id/...).
 func scopedRoute(method, p string) (allowed bool, pathDevice string) {
@@ -95,6 +105,8 @@ func scopedRoute(method, p string) (allowed bool, pathDevice string) {
 	switch {
 	case strings.HasPrefix(p, "/send/"), strings.HasPrefix(p, "/message/"), strings.HasPrefix(p, "/chat/"),
 		p == "/group", strings.HasPrefix(p, "/group/"), strings.HasPrefix(p, "/newsletter/"), strings.HasPrefix(p, "/call/"):
+		return true, ""
+	case isGet && strings.HasPrefix(p, "/api/app/analytics/"):
 		return true, ""
 	case isGet && (p == "/chats" || strings.HasPrefix(p, "/user/") || p == "/url" || p == "/app/info"):
 		return true, ""
@@ -160,6 +172,9 @@ func newDeviceScopeMiddleware(scopes map[string][]string, basePath string, resol
 			}
 		}
 
+		if deviceFreeAppRoute(c.Method(), p) {
+			return c.Next()
+		}
 		ok, pathDevice := scopedRoute(c.Method(), p)
 		if !ok {
 			return scopeError(c, fiber.StatusForbidden, "FORBIDDEN_FOR_ACCOUNT",

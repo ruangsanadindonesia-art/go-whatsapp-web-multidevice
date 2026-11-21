@@ -44,3 +44,8 @@ docs/superpowers/
 # whatsmeow store (legacy path)
 src/whatsapp/
 .mcp.json
+
+# /app SPA build output (built by web/ and the Docker web stage); keep the dir for go:embed
+src/ui/webapp/dist/*
+!src/ui/webapp/dist/.gitkeep
+web/node_modules/
