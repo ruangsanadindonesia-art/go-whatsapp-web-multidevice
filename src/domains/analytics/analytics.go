@@ -30,6 +30,7 @@ type Turn struct {
 // UnansweredChat is a chat whose latest customer turn has no reply yet.
 type UnansweredChat struct {
 	ChatJID        string        `json:"chat_jid"`
+	Name           string        `json:"name"`
 	WaitingSince   time.Time     `json:"waiting_since"`
 	WaitingService time.Duration `json:"-"`
 }
@@ -78,6 +79,8 @@ type RangeRequest struct {
 // Reader reads chat storage for one device (storage device id).
 type Reader interface {
 	MessagesInRange(ctx context.Context, deviceID string, from, to time.Time) ([]MessageRow, error)
+	// ChatNames maps chat JIDs to stored display names (missing = no name).
+	ChatNames(ctx context.Context, deviceID string, jids []string) (map[string]string, error)
 }
 
 type IAnalyticsUsecase interface {

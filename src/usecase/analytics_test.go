@@ -22,6 +22,16 @@ func (s *stubReader) MessagesInRange(_ context.Context, deviceID string, _, _ ti
 	return s.rows, nil
 }
 
+func (s *stubReader) ChatNames(_ context.Context, _ string, jids []string) (map[string]string, error) {
+	out := map[string]string{}
+	for _, j := range jids {
+		if j == "a" {
+			out[j] = "Fulan"
+		}
+	}
+	return out, nil
+}
+
 func newTestAnalytics(t *testing.T, r *stubReader, now time.Time) *serviceAnalytics {
 	svc := NewAnalyticsService(r, testSchedule(t)).(*serviceAnalytics)
 	svc.now = func() time.Time { return now }
@@ -69,7 +79,7 @@ func TestAnalyticsSummaryUsesDeviceAndNow(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if r.device != "dev1@s.whatsapp.net" || len(sum.Unanswered) != 1 || sum.Unanswered[0].WaitingService != 30*time.Minute {
+	if r.device != "dev1@s.whatsapp.net" || len(sum.Unanswered) != 1 || sum.Unanswered[0].WaitingService != 30*time.Minute || sum.Unanswered[0].Name != "Fulan" {
 		t.Fatalf("device %q sum %+v", r.device, sum)
 	}
 }

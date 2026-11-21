@@ -31,7 +31,7 @@ export default function App() {
     <AppShell identity={identity.data} devices={list} deviceId={deviceId} onDeviceChange={choose}>
       <Routes>
         <Route path="/" element={<HomePage device={device} />} />
-        <Route path="/analisis" element={<AnalyticsPage />} />
+        <Route path="/analisis" element={<AnalyticsPage deviceId={deviceId} />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </AppShell>

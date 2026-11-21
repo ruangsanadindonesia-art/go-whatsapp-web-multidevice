@@ -94,3 +94,24 @@ func TestMessagesInRangeSortedByChatThenTime(t *testing.T) {
 		t.Fatalf("got %+v", rows)
 	}
 }
+
+func TestChatNamesScopedToDevice(t *testing.T) {
+	db := newDB(t)
+	for _, q := range []struct{ jid, dev, name string }{
+		{"a@s.whatsapp.net", "d", "Fulan"}, {"a@s.whatsapp.net", "x", "Other"}, {"b@s.whatsapp.net", "d", ""},
+	} {
+		if _, err := db.Exec(`INSERT INTO chats (jid, device_id, name, last_message_time) VALUES (?,?,?,?)`, q.jid, q.dev, q.name, day); err != nil {
+			t.Fatal(err)
+		}
+	}
+	names, err := NewSQLiteReader(db).ChatNames(context.Background(), "d", []string{"a@s.whatsapp.net", "b@s.whatsapp.net", "c@s.whatsapp.net"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(names) != 1 || names["a@s.whatsapp.net"] != "Fulan" {
+		t.Fatalf("got %v", names)
+	}
+	if empty, err := NewSQLiteReader(db).ChatNames(context.Background(), "d", nil); err != nil || len(empty) != 0 {
+		t.Fatalf("empty: %v %v", empty, err)
+	}
+}

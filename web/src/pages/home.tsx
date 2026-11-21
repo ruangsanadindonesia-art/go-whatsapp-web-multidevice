@@ -37,7 +37,7 @@ export function HomePage({ device }: { device: Device | undefined }) {
               const v = statusView(status.data)
               return (
                 <>
-                  <p className={'mt-2 flex items-center gap-2.5 font-display text-[28px] font-semibold ' + v.tone}>
+                  <p className={'mt-2 flex items-center gap-2.5 font-display text-[28px] font-semibold lining-nums ' + v.tone}>
                     <v.Icon size={24} strokeWidth={2} aria-hidden /> {v.text}
                   </p>
                   <p className="mt-3 text-[13px] text-teal-600 tabular-nums">

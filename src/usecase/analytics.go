@@ -47,7 +47,21 @@ func (s *serviceAnalytics) Summary(ctx context.Context, req domainAnalytics.Rang
 	if err != nil {
 		return domainAnalytics.Summary{}, err
 	}
-	return summarize(rows, computeTurns(rows, s.schedule), s.now(), s.schedule), nil
+	sum := summarize(rows, computeTurns(rows, s.schedule), s.now(), s.schedule)
+	if len(sum.Unanswered) > 0 {
+		jids := make([]string, len(sum.Unanswered))
+		for i, u := range sum.Unanswered {
+			jids[i] = u.ChatJID
+		}
+		names, err := s.reader.ChatNames(ctx, s.deviceID(ctx), jids)
+		if err != nil {
+			return domainAnalytics.Summary{}, err
+		}
+		for i := range sum.Unanswered {
+			sum.Unanswered[i].Name = names[sum.Unanswered[i].ChatJID]
+		}
+	}
+	return sum, nil
 }
 
 // Volume counts in-range messages per day and hour in the service time zone.

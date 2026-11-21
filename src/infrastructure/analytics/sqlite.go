@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	domainAnalytics "github.com/aldinokemal/go-whatsapp-web-multidevice/domains/analytics"
@@ -120,4 +121,39 @@ func parseTSString(s string) (time.Time, error) {
 		}
 	}
 	return time.Time{}, fmt.Errorf("analytics: unparseable timestamp %q", s)
+}
+
+// ChatNames returns stored non-empty chat names for jids on deviceID.
+func (r *SQLiteReader) ChatNames(ctx context.Context, deviceID string, jids []string) (map[string]string, error) {
+	out := map[string]string{}
+	const batch = 500 // stay under SQLite's bound-parameter limit
+	for start := 0; start < len(jids); start += batch {
+		part := jids[start:min(start+batch, len(jids))]
+		args := make([]any, 0, len(part)+1)
+		args = append(args, deviceID)
+		marks := make([]string, len(part))
+		for i, j := range part {
+			marks[i] = "?"
+			args = append(args, j)
+		}
+		rs, err := r.db.QueryContext(ctx,
+			`SELECT jid, name FROM chats WHERE device_id = ? AND name <> '' AND jid IN (`+strings.Join(marks, ",")+`)`, args...)
+		if err != nil {
+			return nil, fmt.Errorf("analytics chat names: %w", err)
+		}
+		for rs.Next() {
+			var jid, name string
+			if err := rs.Scan(&jid, &name); err != nil {
+				rs.Close()
+				return nil, fmt.Errorf("analytics chat names scan: %w", err)
+			}
+			out[jid] = name
+		}
+		err = rs.Err()
+		rs.Close()
+		if err != nil {
+			return nil, err
+		}
+	}
+	return out, nil
 }
