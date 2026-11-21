@@ -65,9 +65,9 @@ func TestMessagesInRangeExcludesGroups(t *testing.T) {
 func TestMessagesInRangeIncludesPriorContext(t *testing.T) {
 	db := newDB(t)
 	chat := "a@s.whatsapp.net"
-	insert(t, db, "old", "d", chat, day.Add(-72*time.Hour), true)   // far before: context via MAX()
-	insert(t, db, "in1", "d", chat, day.Add(2*time.Hour), false)    // in range
-	insert(t, db, "late", "d", chat, day.Add(96*time.Hour), true)   // far after: context via MIN()
+	insert(t, db, "old", "d", chat, day.Add(-72*time.Hour), true)                  // far before: context via MAX()
+	insert(t, db, "in1", "d", chat, day.Add(2*time.Hour), false)                   // in range
+	insert(t, db, "late", "d", chat, day.Add(96*time.Hour), true)                  // far after: context via MIN()
 	insert(t, db, "other", "d", "z@s.whatsapp.net", day.Add(-72*time.Hour), false) // no in-range rows: ignored
 	rows, err := NewSQLiteReader(db).MessagesInRange(context.Background(), "d", day, day.Add(24*time.Hour))
 	if err != nil {

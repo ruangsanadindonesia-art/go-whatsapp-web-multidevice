@@ -84,4 +84,5 @@ type IAnalyticsUsecase interface {
 	Summary(ctx context.Context, req RangeRequest) (Summary, error)
 	Volume(ctx context.Context, req RangeRequest) ([]HourBucket, error)
 	ServiceHours() string
+	Location() *time.Location
 }

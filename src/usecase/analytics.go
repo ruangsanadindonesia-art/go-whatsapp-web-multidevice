@@ -26,6 +26,8 @@ func NewAnalyticsService(reader domainAnalytics.Reader, schedule servicehours.Sc
 
 func (s *serviceAnalytics) ServiceHours() string { return s.schedule.String() }
 
+func (s *serviceAnalytics) Location() *time.Location { return s.schedule.Loc }
+
 func (s *serviceAnalytics) rows(ctx context.Context, req domainAnalytics.RangeRequest) ([]domainAnalytics.MessageRow, error) {
 	if !req.To.After(req.From) {
 		return nil, pkgError.ValidationError("analytics: 'to' must be after 'from'")
