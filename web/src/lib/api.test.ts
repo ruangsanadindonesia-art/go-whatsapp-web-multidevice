@@ -19,15 +19,15 @@ function mockFetch(status: number, body: unknown) {
 afterEach(() => vi.unstubAllGlobals())
 
 describe('apiRoot', () => {
-  it('strips the trailing app/ segment', () => {
-    expect(apiRoot('http://h/app/')).toBe('')
-    expect(apiRoot('http://h/wa/app/')).toBe('/wa')
+  it('strips the trailing panel/ segment', () => {
+    expect(apiRoot('http://h/panel/')).toBe('')
+    expect(apiRoot('http://h/wa/panel/')).toBe('/wa')
   })
 })
 
 describe('apiGet', () => {
   it('calls the server root with the device header', async () => {
-    setBase('http://localhost/app/')
+    setBase('http://localhost/panel/')
     const fn = mockFetch(200, { code: 'SUCCESS', results: { ok: 1 } })
     const res = await apiGet<{ ok: number }>('/chats', 'dev1')
     expect(res).toEqual({ ok: 1 })
@@ -37,7 +37,7 @@ describe('apiGet', () => {
   })
 
   it('honours APP_BASE_PATH', async () => {
-    setBase('http://localhost/wa/app/')
+    setBase('http://localhost/wa/panel/')
     const fn = mockFetch(200, { results: [] })
     await apiGet('/chats')
     expect(fn.mock.calls[0][0]).toBe('/wa/chats')
@@ -46,7 +46,7 @@ describe('apiGet', () => {
   })
 
   it('throws ApiError with the server code', async () => {
-    setBase('http://localhost/app/')
+    setBase('http://localhost/panel/')
     mockFetch(403, { code: 'DEVICE_NOT_ALLOWED', message: 'no' })
     await expect(apiGet('/x')).rejects.toMatchObject({ status: 403, code: 'DEVICE_NOT_ALLOWED' })
     await expect(apiGet('/x')).rejects.toBeInstanceOf(ApiError)

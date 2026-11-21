@@ -390,7 +390,7 @@ func initFlags() {
 		&config.AppWebAppEnabled,
 		"webapp", "",
 		config.AppWebAppEnabled,
-		`serve the Ruang Sanad app at "/app" --webapp <bool>`,
+		`serve the Ruang Sanad panel at "/panel" --webapp <bool>`,
 	)
 	rootCmd.PersistentFlags().BoolVarP(
 		&config.AppUIEnabled,

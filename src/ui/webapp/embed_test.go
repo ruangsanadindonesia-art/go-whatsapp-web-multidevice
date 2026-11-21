@@ -34,7 +34,7 @@ func get(t *testing.T, app *fiber.App, target string) (int, string, map[string]s
 func TestWebAppServesIndexForDeepLink(t *testing.T) {
 	app := fiber.New()
 	register(app, testFS(), "")
-	for _, target := range []string{"/app", "/app/", "/app/analytics", "/app/analytics/x"} {
+	for _, target := range []string{"/panel", "/panel/", "/panel/analytics", "/panel/analytics/x"} {
 		status, body, h := get(t, app, target)
 		if status != 200 || !strings.Contains(body, "APP") {
 			t.Fatalf("%s: status %d body %q", target, status, body)
@@ -45,7 +45,7 @@ func TestWebAppServesIndexForDeepLink(t *testing.T) {
 		if h["Cache-Control"] != "no-cache" {
 			t.Fatalf("%s: cache-control %q", target, h["Cache-Control"])
 		}
-		if !strings.Contains(body, `<base href="/app/">`) {
+		if !strings.Contains(body, `<base href="/panel/">`) {
 			t.Fatalf("%s: missing injected <base>: %q", target, body)
 		}
 		if h["X-Frame-Options"] != "DENY" || h["X-Content-Type-Options"] != "nosniff" {
@@ -57,8 +57,8 @@ func TestWebAppServesIndexForDeepLink(t *testing.T) {
 func TestWebAppInjectsBasePath(t *testing.T) {
 	app := fiber.New()
 	register(app.Group("/wa"), testFS(), "/wa")
-	_, body, _ := get(t, app, "/wa/app/analytics")
-	if !strings.Contains(body, `<base href="/wa/app/">`) {
+	_, body, _ := get(t, app, "/wa/panel/analytics")
+	if !strings.Contains(body, `<base href="/wa/panel/">`) {
 		t.Fatalf("missing base path in <base>: %q", body)
 	}
 }
@@ -66,7 +66,7 @@ func TestWebAppInjectsBasePath(t *testing.T) {
 func TestWebAppServesAssetWithLongCache(t *testing.T) {
 	app := fiber.New()
 	register(app, testFS(), "")
-	status, body, h := get(t, app, "/app/assets/index-a1.js")
+	status, body, h := get(t, app, "/panel/assets/index-a1.js")
 	if status != 200 || body != "console.log(1)" {
 		t.Fatalf("status %d body %q", status, body)
 	}
@@ -81,7 +81,7 @@ func TestWebAppServesAssetWithLongCache(t *testing.T) {
 func TestWebAppMissingAssetIs404(t *testing.T) {
 	app := fiber.New()
 	register(app, testFS(), "")
-	if status, _, _ := get(t, app, "/app/assets/missing.js"); status != 404 {
+	if status, _, _ := get(t, app, "/panel/assets/missing.js"); status != 404 {
 		t.Fatalf("missing asset: status %d, want 404", status)
 	}
 }
@@ -91,7 +91,7 @@ func TestWebAppRejectsPathTraversal(t *testing.T) {
 	fsys := testFS()
 	fsys["../secret"] = &fstest.MapFile{Data: []byte("SECRET")}
 	register(app, fsys, "")
-	for _, target := range []string{"/app/../go.mod", "/app/%2e%2e/secret", "/app/..%2fsecret"} {
+	for _, target := range []string{"/panel/../go.mod", "/panel/%2e%2e/secret", "/panel/..%2fsecret"} {
 		_, body, _ := get(t, app, target)
 		if strings.Contains(body, "SECRET") || strings.Contains(body, "module ") {
 			t.Fatalf("%s leaked file contents: %q", target, body)
@@ -102,8 +102,22 @@ func TestWebAppRejectsPathTraversal(t *testing.T) {
 func TestWebAppPlaceholderWhenNotBuilt(t *testing.T) {
 	app := fiber.New()
 	register(app, fstest.MapFS{".gitkeep": {}}, "")
-	status, body, _ := get(t, app, "/app/")
+	status, body, _ := get(t, app, "/panel/")
 	if status != 200 || !strings.Contains(body, "npm run build") {
 		t.Fatalf("status %d body %q", status, body)
+	}
+}
+
+// GOWA already owns GET /app/login, /app/logout, /app/devices, ... The SPA
+// must never shadow them, whatever the registration order.
+func TestWebAppDoesNotShadowGowaAppRoutes(t *testing.T) {
+	app := fiber.New()
+	register(app, testFS(), "")
+	app.Get("/app/login", func(c fiber.Ctx) error { return c.SendString("gowa-login") })
+	app.Get("/app/devices", func(c fiber.Ctx) error { return c.SendString("gowa-devices") })
+	for target, want := range map[string]string{"/app/login": "gowa-login", "/app/devices": "gowa-devices"} {
+		if _, body, _ := get(t, app, target); body != want {
+			t.Fatalf("%s: got %q, want %q", target, body, want)
+		}
 	}
 }

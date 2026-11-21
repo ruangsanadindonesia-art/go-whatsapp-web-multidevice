@@ -1,4 +1,5 @@
-// Package webapp serves the Ruang Sanad /app single-page app. The SPA is
+// Package webapp serves the Ruang Sanad single-page app at /panel. (Not
+// /app: GOWA already owns /app/login, /app/logout, /app/devices, ...) The SPA is
 // built from web/ into dist/ (see web/vite.config.ts and the Docker web
 // stage) and embedded into the binary. A checkout without a build only has
 // dist/.gitkeep; the route then serves a placeholder page.
@@ -21,9 +22,9 @@ var distFS embed.FS
 
 const placeholderHTML = `<!doctype html><html lang="id"><head><meta charset="utf-8"><title>Ruang Sanad</title></head>` +
 	`<body style="font-family:system-ui;padding:2rem;color:#16484a;background:#fcf6ea">` +
-	`<p>UI /app belum di-build. Jalankan <code>npm run build</code> di <code>web/</code>.</p></body></html>`
+	`<p>UI panel belum di-build. Jalankan <code>npm run build</code> di <code>web/</code>.</p></body></html>`
 
-// Register mounts GET {basePath}/app and {basePath}/app/* on router. basePath
+// Register mounts GET {basePath}/panel and {basePath}/panel/* on router. basePath
 // is APP_BASE_PATH ("" when unset); router must already be that group.
 func Register(router fiber.Router, basePath string) {
 	sub, err := fs.Sub(distFS, "dist")
@@ -34,7 +35,7 @@ func Register(router fiber.Router, basePath string) {
 }
 
 func register(router fiber.Router, fsys fs.FS, basePath string) {
-	baseHref := strings.TrimRight(basePath, "/") + "/app/"
+	baseHref := strings.TrimRight(basePath, "/") + "/panel/"
 	index := loadIndex(fsys, baseHref)
 
 	serveIndex := func(c fiber.Ctx) error {
@@ -44,8 +45,8 @@ func register(router fiber.Router, fsys fs.FS, basePath string) {
 		return c.Send(index)
 	}
 
-	router.Get("/app", serveIndex)
-	router.Get("/app/*", func(c fiber.Ctx) error {
+	router.Get("/panel", serveIndex)
+	router.Get("/panel/*", func(c fiber.Ctx) error {
 		rel := strings.TrimPrefix(path.Clean("/"+c.Params("*")), "/")
 		if rel == "" || rel == "index.html" {
 			return serveIndex(c)

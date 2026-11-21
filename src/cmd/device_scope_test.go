@@ -182,3 +182,31 @@ func TestMcpOAuthRejectsRestrictedAccounts(t *testing.T) {
 	require.True(t, validate("stage", "pw"))
 	require.False(t, validate("dashboard", "pw"))
 }
+
+func TestDeviceScopeAllowsWebAppForRestricted(t *testing.T) {
+	app := scopeApp("")
+	// Multi-device account: device-free app routes need no X-Device-Id.
+	for _, p := range []string{"/panel", "/panel/", "/panel/analytics", "/api/app/me"} {
+		code, body := do(t, app, call{"dashboard", "GET", p, ""})
+		require.Equal(t, 200, code, p)
+		require.Equal(t, "ok device=", body, p)
+	}
+	// Writes on app paths stay blocked.
+	code, _ := do(t, app, call{"dashboard", "POST", "/api/app/me", ""})
+	require.Equal(t, 403, code)
+}
+
+func TestDeviceScopeBlocksOtherDeviceAnalytics(t *testing.T) {
+	app := scopeApp("")
+	code, body := do(t, app, call{"cs-bridge", "GET", "/api/app/analytics/summary", "cs-ai"})
+	require.Equal(t, 200, code)
+	require.Equal(t, "ok device=cs-ai", body)
+
+	code, body = do(t, app, call{"cs-bridge", "GET", "/api/app/analytics/summary", "keuangan"})
+	require.Equal(t, 403, code)
+	require.Contains(t, body, "DEVICE_NOT_ALLOWED")
+
+	// Single-device account without header is pinned to its device.
+	_, body = do(t, app, call{"cs-bridge", "GET", "/api/app/analytics/volume", ""})
+	require.Equal(t, "ok device=cs-ai", body)
+}

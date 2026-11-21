@@ -258,9 +258,10 @@ func restServer(_ *cobra.Command, _ []string) {
 	// CS AI settings page, proxied to hermes-cs-bridge (no-op unless configured).
 	registerCSAIProxy(apiGroup)
 
-	// Ruang Sanad SPA at /app (embedded build of web/).
+	// Ruang Sanad SPA at /panel (embedded build of web/).
 	if config.AppWebAppEnabled {
 		webapp.Register(apiGroup, config.AppBasePath)
+		registerWebAppAPI(apiGroup)
 	}
 
 	// Device-scoped operations (header-based). This must stay the LAST

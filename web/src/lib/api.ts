@@ -1,4 +1,4 @@
-// The Go server injects <base href="{APP_BASE_PATH}/app/"> into index.html,
+// The Go server injects <base href="{APP_BASE_PATH}/panel/"> into index.html,
 // so the same build works under any base path.
 
 export class ApiError extends Error {
@@ -14,10 +14,10 @@ export class ApiError extends Error {
 /** Server root (APP_BASE_PATH) derived from the SPA base URL, without trailing slash. */
 export function apiRoot(baseURI: string = document.baseURI): string {
   const path = new URL(baseURI).pathname
-  return path.replace(/\/?app\/?$/, '').replace(/\/$/, '')
+  return path.replace(/\/?panel\/?$/, '').replace(/\/$/, '')
 }
 
-/** Router basename: the SPA base path without trailing slash, e.g. "/app" or "/wa/app". */
+/** Router basename: the SPA base path without trailing slash, e.g. "/panel" or "/wa/panel". */
 export function appBasename(baseURI: string = document.baseURI): string {
   return new URL(baseURI).pathname.replace(/\/$/, '')
 }
