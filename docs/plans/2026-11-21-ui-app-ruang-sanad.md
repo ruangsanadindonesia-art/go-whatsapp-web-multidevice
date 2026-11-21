@@ -1,6 +1,8 @@
 # Rencana Teknis: UI Custom `/app` untuk GOWA Ruang Sanad
 
-Status: draf untuk direview, belum ada kode yang diubah.
+Status: fase 1–2 sudah diimplementasikan (branch `claude/focused-brown-ujirt3`).
+
+> **Perubahan saat implementasi:** SPA disajikan di **`/panel`**, bukan `/app`. GOWA sudah memakai route `GET /app/login`, `/app/logout`, `/app/devices`, `/app/status`, dan lainnya; wildcard `/app/*` akan menimpanya. Endpoint API tetap `/api/app/*`.
 Tanggal: 2026-11-21
 
 ## 1. Keputusan yang sudah diambil
