@@ -29,6 +29,8 @@ var (
 	// project released as a single HTML file; gowa fetches the latest release
 	// asset and serves it at "/".
 	AppUIEnabled        = true
+	// AppWebAppEnabled serves the Ruang Sanad SPA (web/, embedded) at {AppBasePath}/app.
+	AppWebAppEnabled = true
 	AppUIAutoUpdate     = true
 	AppUIRepo           = "aldinokemal/gowa-ui"
 	AppUIAssetName      = "gowa-ui.html"

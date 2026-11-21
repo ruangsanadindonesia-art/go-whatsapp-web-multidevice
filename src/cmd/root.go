@@ -125,6 +125,9 @@ func initEnvConfig() {
 	// default instead of being overwritten by the zero value of GetBool /
 	// GetDuration. viper.IsSet works equally well here (it does consult
 	// AutomaticEnv), so either guard is fine for new keys.
+	if viper.GetString("app_webapp_enabled") != "" {
+		config.AppWebAppEnabled = viper.GetBool("app_webapp_enabled")
+	}
 	if viper.GetString("app_ui_enabled") != "" {
 		config.AppUIEnabled = viper.GetBool("app_ui_enabled")
 	}
@@ -383,6 +386,12 @@ func initFlags() {
 	)
 
 	// Web UI flags
+	rootCmd.PersistentFlags().BoolVarP(
+		&config.AppWebAppEnabled,
+		"webapp", "",
+		config.AppWebAppEnabled,
+		`serve the Ruang Sanad app at "/app" --webapp <bool>`,
+	)
 	rootCmd.PersistentFlags().BoolVarP(
 		&config.AppUIEnabled,
 		"ui-enabled", "",
