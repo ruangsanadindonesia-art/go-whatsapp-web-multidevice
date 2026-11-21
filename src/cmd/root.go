@@ -125,6 +125,12 @@ func initEnvConfig() {
 	// default instead of being overwritten by the zero value of GetBool /
 	// GetDuration. viper.IsSet works equally well here (it does consult
 	// AutomaticEnv), so either guard is fine for new keys.
+	if v := viper.GetString("cs_service_hours"); v != "" {
+		config.CSServiceHoursRaw = v
+	}
+	if v := viper.GetString("cs_service_tz"); v != "" {
+		config.CSServiceTZ = v
+	}
 	if viper.GetString("app_webapp_enabled") != "" {
 		config.AppWebAppEnabled = viper.GetBool("app_webapp_enabled")
 	}

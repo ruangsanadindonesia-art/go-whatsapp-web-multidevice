@@ -29,6 +29,10 @@ var (
 	// project released as a single HTML file; gowa fetches the latest release
 	// asset and serves it at "/".
 	AppUIEnabled        = true
+	// CS service hours (Ruang Sanad panel analytics): response times only count
+	// minutes inside these daily windows, in CSServiceTZ.
+	CSServiceHoursRaw = "08:00-15:00,19:00-21:00"
+	CSServiceTZ       = "Asia/Jakarta"
 	// AppWebAppEnabled serves the Ruang Sanad SPA (web/, embedded) at {AppBasePath}/panel.
 	AppWebAppEnabled = true
 	AppUIAutoUpdate     = true
