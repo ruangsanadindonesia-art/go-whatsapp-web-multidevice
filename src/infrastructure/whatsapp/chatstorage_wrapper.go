@@ -290,6 +290,18 @@ func (r *deviceChatStorage) FailScheduledSend(id, leaseToken, lastError string) 
 	return r.base.FailScheduledSend(id, leaseToken, lastError)
 }
 
+func (r *deviceChatStorage) RecordScheduledSendRun(run *domainChatStorage.ScheduledSendRun) error {
+	return r.base.RecordScheduledSendRun(run)
+}
+
+func (r *deviceChatStorage) ListScheduledSendRuns(filter domainChatStorage.ScheduledSendRunFilter) ([]*domainChatStorage.ScheduledSendRun, error) {
+	return r.base.ListScheduledSendRuns(filter)
+}
+
+func (r *deviceChatStorage) FirstScheduledSendRunAt(deviceID string) (*time.Time, error) {
+	return r.base.FirstScheduledSendRunAt(deviceID)
+}
+
 func (r *deviceChatStorage) SetScheduledSendStatus(deviceID, id string, from []string, status string, nextRunAt *time.Time) (bool, error) {
 	return r.base.SetScheduledSendStatus(deviceID, id, from, status, nextRunAt)
 }

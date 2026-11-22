@@ -91,6 +91,12 @@ type IChatStorageRepository interface {
 	RetryScheduledSend(id, leaseToken, lastError string, attempts int, nextRunAt time.Time) error
 	CompleteScheduledSend(id, leaseToken, status, lastMessageID string, occurrenceCount int, nextRunAt *time.Time) error
 	FailScheduledSend(id, leaseToken, lastError string) error
+	// RecordScheduledSendRun appends one final occurrence outcome to the run log.
+	RecordScheduledSendRun(run *ScheduledSendRun) error
+	// ListScheduledSendRuns returns runs ordered by executed_at.
+	ListScheduledSendRuns(filter ScheduledSendRunFilter) ([]*ScheduledSendRun, error)
+	// FirstScheduledSendRunAt is the earliest logged run of a device (nil if none).
+	FirstScheduledSendRunAt(deviceID string) (*time.Time, error)
 	// SetScheduledSendStatus moves a job to status only from one of the given
 	// statuses, and reports whether a row changed.
 	SetScheduledSendStatus(deviceID, id string, from []string, status string, nextRunAt *time.Time) (bool, error)

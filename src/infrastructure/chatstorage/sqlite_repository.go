@@ -3167,5 +3167,23 @@ func (r *SQLiteRepository) getMigrations() []string {
 
 		// Migration 49: Persist reply context for live, sent, and history messages.
 		`ALTER TABLE messages ADD COLUMN context_metadata TEXT DEFAULT ''`,
+
+		// Migration 50: Final outcome of every scheduled occurrence (panel dashboard).
+		`CREATE TABLE IF NOT EXISTS scheduled_send_runs (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			schedule_id VARCHAR(64) NOT NULL,
+			device_id VARCHAR(255) NOT NULL,
+			occurrence_at TIMESTAMP NOT NULL,
+			executed_at TIMESTAMP NOT NULL,
+			status VARCHAR(16) NOT NULL,
+			message_id VARCHAR(255) NOT NULL DEFAULT '',
+			error TEXT NOT NULL DEFAULT ''
+		)`,
+
+		// Migration 51: Run log by device and time
+		`CREATE INDEX IF NOT EXISTS idx_scheduled_send_runs_device ON scheduled_send_runs(device_id, executed_at)`,
+
+		// Migration 52: Run log by schedule
+		`CREATE INDEX IF NOT EXISTS idx_scheduled_send_runs_schedule ON scheduled_send_runs(schedule_id, executed_at)`,
 	}
 }
