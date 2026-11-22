@@ -44,6 +44,11 @@ type Config struct {
 	MediaDir     string
 	Typing       bool
 
+	// Vision: incoming images are passed to Hermes so the model can read them
+	// (transfer proofs, screenshots). VISION_ENABLED=false restores text notes.
+	VisionEnabled  bool
+	VisionMaxBytes int64
+
 	// AdminToken protects the /cs-ai settings page. GOWA's proxy sends it after
 	// Basic Auth succeeded; when empty the settings page is disabled.
 	AdminToken string
@@ -118,6 +123,15 @@ func loadConfig() (Config, error) {
 		return c, err
 	}
 	c.Typing = env("TYPING_INDICATOR", "true") != "false"
+	c.VisionEnabled = !strings.EqualFold(env("VISION_ENABLED", "true"), "false")
+	maxMB, err := envInt("VISION_MAX_MB", 5)
+	if err != nil {
+		return c, err
+	}
+	if maxMB <= 0 || maxMB > 20 {
+		return c, errors.New("VISION_MAX_MB must be between 1 and 20")
+	}
+	c.VisionMaxBytes = int64(maxMB) << 20
 
 	for _, n := range strings.Split(os.Getenv("ADMIN_NUMBERS"), ",") {
 		if d := normalizePhone(n); d != "" {

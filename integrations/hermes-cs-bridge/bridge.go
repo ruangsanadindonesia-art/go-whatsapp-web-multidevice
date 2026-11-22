@@ -40,7 +40,7 @@ type Bridge struct {
 
 type chat struct {
 	work     sync.Mutex // serialises AI turns of one chat
-	pending  []string
+	pending  []pendingMsg
 	name     string
 	phone    string
 	timer    *time.Timer
@@ -258,17 +258,25 @@ func (b *Bridge) handleEvent(ev webhookEvent) {
 		b.log.Info("CS AI disabled in settings; message left for admins", "chat", chatID)
 		return
 	}
-	if note := mediaNote(kind, text != "", paymentSent); note != "" {
-		text = strings.TrimSpace(text + "\n" + note)
+	item := pendingMsg{text: text}
+	var img *imageRef
+	if kind == "gambar" && b.cfg.VisionEnabled {
+		img = imageRefFrom(p, id, chatID)
 	}
-	if text == "" {
+	if img != nil {
+		item.img = img
+		item.noteOK, item.noteFail = imageNotes(text != "", paymentSent)
+	} else if note := mediaNote(kind, text != "", paymentSent); note != "" {
+		item.text = strings.TrimSpace(text + "\n" + note)
+	}
+	if item.text == "" && item.img == nil {
 		return
 	}
 	if _, paused := b.store.PausedUntil(chatID, now); paused {
 		b.log.Info("chat paused, AI stays silent", "chat", chatID)
 		return
 	}
-	b.enqueue(chatID, phone, name, text, now, s)
+	b.enqueue(chatID, phone, name, item, now, s)
 }
 
 func (b *Bridge) markSeen(id string, now time.Time) bool {
@@ -325,7 +333,7 @@ func (b *Bridge) stopTimer(c *chat) {
 
 // enqueue buffers a message and (re)starts the debounce timer so several quick
 // messages become one AI turn.
-func (b *Bridge) enqueue(chatID, phone, name, text string, now time.Time, s Settings) {
+func (b *Bridge) enqueue(chatID, phone, name string, item pendingMsg, now time.Time, s Settings) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	c, ok := b.chats[chatID]
@@ -346,6 +354,7 @@ func (b *Bridge) enqueue(chatID, phone, name, text string, now time.Time, s Sett
 	if s.RateLimitPerHour > 0 && len(c.hits) >= s.RateLimitPerHour {
 		if !c.notified {
 			c.notified = true
+			text := strings.TrimSpace(item.text + "\n" + item.noteFail)
 			b.wg.Add(1)
 			go func() {
 				defer b.wg.Done()
@@ -366,7 +375,7 @@ func (b *Bridge) enqueue(chatID, phone, name, text string, now time.Time, s Sett
 	if len(c.pending) == 0 {
 		c.firstAt = now
 	}
-	c.pending = append(c.pending, text)
+	c.pending = append(c.pending, item)
 	b.stopTimer(c)
 	wait := s.Debounce()
 	if rest := b.cfg.DebounceMaxWait - now.Sub(c.firstAt); rest < wait {
@@ -393,11 +402,11 @@ func (b *Bridge) flush(chatID string, c *chat) {
 	defer c.work.Unlock()
 
 	b.mu.Lock()
-	texts := c.pending
+	msgs := c.pending
 	c.pending = nil
 	name, phone := c.name, c.phone
 	b.mu.Unlock()
-	if len(texts) == 0 {
+	if len(msgs) == 0 {
 		return
 	}
 	now := b.now()
@@ -408,18 +417,32 @@ func (b *Bridge) flush(chatID string, c *chat) {
 	if !s.Enabled {
 		return
 	}
-	userText := truncate(strings.Join(texts, "\n"), b.cfg.MaxMessageChars)
-
-	ctx, cancel := context.WithTimeout(b.ctx, b.cfg.HermesTimeout+10*time.Second)
+	ctx, cancel := context.WithTimeout(b.ctx, b.cfg.HermesTimeout+40*time.Second)
 	defer cancel()
 	if s.Typing {
 		b.gowa.Typing(ctx, chatID, true)
 		defer b.gowa.Typing(context.WithoutCancel(ctx), chatID, false)
 	}
+	joined, images := b.collectImages(ctx, msgs)
+	userText := truncate(joined, b.cfg.MaxMessageChars)
 
 	jadwal, _, jadwalOK := b.jadwalList()
 	system := buildSystemPromptJadwal(s, name, now, b.store.PaymentSentRecently(chatID, now), b.store.RecentOutbound(chatID, now), jadwal, jadwalOK)
-	reply, err := b.agent.Reply(ctx, b.sessionID(chatID, phone), system, userText)
+	session := b.sessionID(chatID, phone)
+	var reply string
+	var err error
+	if va, ok := b.agent.(VisionAgent); ok && len(images) > 0 {
+		reply, err = va.ReplyWithImages(ctx, session, system, userText, images)
+		if err != nil && rejectedInput(err) {
+			// Older Hermes or a model without vision: answer from text only.
+			b.log.Warn("hermes refused images, retrying text-only", "chat", chatID, "err", err)
+			joined, _ = b.collectImages(ctx, textOnly(msgs))
+			userText = truncate(joined, b.cfg.MaxMessageChars)
+			reply, err = b.agent.Reply(ctx, session, system, userText)
+		}
+	} else {
+		reply, err = b.agent.Reply(ctx, session, system, userText)
+	}
 	if err != nil {
 		b.log.Error("hermes failed", "chat", chatID, "err", err)
 		b.sendLead(leadRef{chatID: chatID, phone: phone, name: name}, s.FallbackMessage)

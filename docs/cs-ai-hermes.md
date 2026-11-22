@@ -136,6 +136,23 @@ resmi dari halaman pengaturan sebelum pesan dikirim:
 Kalau calon santri mengirim gambar atau dokumen dalam 14 hari setelah info
 pembayaran dikirim, bridge memberi tahu AI bahwa itu kemungkinan bukti transfer.
 
+**Membaca gambar (vision).** Gambar dari calon santri diambil bridge dari GOWA
+(`/statics/...`, atau `/message/{id}/download` bila `WHATSAPP_AUTO_DOWNLOAD_MEDIA=false`)
+dan dikirim ke Hermes sebagai `image_url` (data URL base64). Model bisa membaca
+bukti transfer, tangkapan layar, atau brosur. Untuk bukti transfer, AI menulis yang
+terbaca (bank, nominal, tanggal, status) di ringkasan HANDOFF dan membandingkan
+nominal dengan paket, tetapi **tetap tidak boleh menyatakan lunas**; verifikasi mutasi
+tetap oleh admin.
+
+- Syarat: Hermes Agent versi yang mendukung inline image di `/v1/chat/completions`
+  dan model profile yang mendukung gambar. Kalau Hermes menolak gambar (HTTP 400/413/
+  415/422), bridge otomatis mengulang tanpa gambar, jadi chat tetap dijawab.
+- Hanya gambar (JPEG/PNG/WEBP/GIF), maks `VISION_MAX_MB` (default 5), maks 3 per
+  giliran AI. Dokumen PDF, stiker, video, dan voice note belum dibaca.
+- Matikan dengan `VISION_ENABLED=false` di `cs-bridge.env` (kembali ke perilaku lama).
+- Biaya: gambar menambah token input per panggilan, dan Hermes menyimpan gambar di
+  riwayat sesi chat itu.
+
 **Bagian yang dikunci.** Aturan keamanan, aturan pembayaran, dan kode khusus ada di
 `prompts/locked.md`. Bagian ini **tidak bisa diubah dari halaman pengaturan** dan
 selalu ditambahkan ke instruksi. Tujuannya supaya edit dari UI tidak bisa membuat AI
