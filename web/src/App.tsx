@@ -6,6 +6,7 @@ import { loadSavedDevice, pickDevice, saveDevice, useDevices, useIdentity } from
 import { AnalyticsPage } from './pages/analytics'
 import { HomePage } from './pages/home'
 import { NotFoundPage } from './pages/not-found'
+import { SchedulePage } from './pages/schedule'
 
 export default function App() {
   const identity = useIdentity()
@@ -32,6 +33,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<HomePage device={device} />} />
         <Route path="/analisis" element={<AnalyticsPage deviceId={deviceId} />} />
+        <Route path="/jadwal/*" element={<SchedulePage deviceId={deviceId} />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </AppShell>

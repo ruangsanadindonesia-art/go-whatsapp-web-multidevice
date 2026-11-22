@@ -23,10 +23,25 @@ export function appBasename(baseURI: string = document.baseURI): string {
 }
 
 /** GET a GOWA endpoint and return its `results` field (or the whole body when absent). */
-export async function apiGet<T>(path: string, deviceId?: string): Promise<T> {
+export function apiGet<T>(path: string, deviceId?: string): Promise<T> {
+  return request<T>('GET', path, deviceId)
+}
+
+/** POST without a body (actions); returns `results`. */
+export function apiPost<T>(path: string, deviceId?: string): Promise<T> {
+  return request<T>('POST', path, deviceId)
+}
+
+/** URL for media/elements that cannot send headers (img src): device as query. */
+export function apiUrl(path: string, deviceId?: string): string {
+  const sep = path.includes('?') ? '&' : '?'
+  return apiRoot() + path + (deviceId ? sep + 'device_id=' + encodeURIComponent(deviceId) : '')
+}
+
+async function request<T>(method: string, path: string, deviceId?: string): Promise<T> {
   const headers: Record<string, string> = { Accept: 'application/json' }
   if (deviceId) headers['X-Device-Id'] = deviceId
-  const res = await fetch(apiRoot() + path, { credentials: 'same-origin', headers })
+  const res = await fetch(apiRoot() + path, { method, credentials: 'same-origin', headers })
   let body: { code?: string; message?: string; results?: unknown } = {}
   try {
     body = await res.json()
