@@ -19,10 +19,10 @@ export function UnansweredList({ items }: { items: Unanswered[] }) {
           {items.map((u) => {
             const link = waLink(u.chat_jid)
             return (
-              <li key={u.chat_jid} className="flex items-center gap-4 px-5 py-3.5">
+              <li key={u.chat_jid} className="flex items-center gap-3 px-4 py-3.5 md:gap-4 md:px-5">
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium text-teal-900">{chatLabel(u.chat_jid, u.name)}</p>
-                  <p className="text-[13px] text-teal-600 tabular-nums">Sejak {formatWIBDateTime(u.waiting_since)}</p>
+                  <p className="truncate text-[13px] text-teal-600 tabular-nums">Sejak {formatWIBDateTime(u.waiting_since)}</p>
                 </div>
                 <p className="shrink-0 text-right tabular-nums">
                   <span className="block text-[15px] font-semibold text-danger">{formatDuration(u.waiting_service_s)}</span>

@@ -12,9 +12,9 @@ export function Ornament({ className = '' }: { className?: string }) {
 /** Page heading: eyebrow, Playfair title with an italic gold accent phrase, ornament. */
 export function PageHeading({ eyebrow, title, accent }: { eyebrow: string; title: string; accent?: string }) {
   return (
-    <header className="mb-8">
+    <header className="mb-6 md:mb-8">
       <p className="eyebrow">{eyebrow}</p>
-      <h1 className="mt-2 font-display text-[28px] leading-tight font-semibold tracking-[-0.01em] text-teal-900 [text-wrap:balance]">
+      <h1 className="mt-2 line-clamp-3 font-display text-[24px] leading-tight font-semibold tracking-[-0.01em] text-teal-900 [text-wrap:balance] md:text-[28px]">
         {title} {accent && <em className="text-gold-600 italic">{accent}</em>}
       </h1>
       <Ornament className="mt-3" />

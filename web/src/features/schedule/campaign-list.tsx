@@ -14,7 +14,7 @@ export function CampaignList({ deviceId }: { deviceId: string | undefined }) {
   return (
     <section>
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        <label className="relative min-w-[220px] flex-1 md:max-w-[320px]">
+        <label className="relative w-full flex-1 sm:w-auto md:max-w-[320px]">
           <span className="sr-only">Cari isi pesan atau nomor</span>
           <Search size={16} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-teal-600" aria-hidden />
           <input
@@ -48,7 +48,7 @@ export function CampaignList({ deviceId }: { deviceId: string | undefined }) {
             const st = CAMPAIGN_STATUS[c.status]
             return (
               <li key={c.key}>
-                <Link to={`/jadwal/c/${c.key}`} className="grid gap-x-6 gap-y-1 px-5 py-4 transition-colors hover:bg-gold-100/50 md:grid-cols-[1fr_auto_auto]">
+                <Link to={`/jadwal/c/${c.key}`} className="grid gap-x-6 gap-y-1 px-4 py-3.5 md:px-5 md:py-4 transition-colors hover:bg-gold-100/50 md:grid-cols-[1fr_auto_auto]">
                   <span className="min-w-0">
                     <span className="block truncate font-medium text-teal-900">{c.summary || '(tanpa teks)'}</span>
                     <span className="text-[13px] text-teal-600">

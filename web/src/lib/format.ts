@@ -26,3 +26,6 @@ export function formatWIBDateTime(iso: string): string {
 }
 
 export { DAY_NAMES }
+
+/** Three-letter day names (Ahad → Ahd), Sunday first. */
+export const DAY_SHORT = ['Ahd', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab']

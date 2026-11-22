@@ -31,7 +31,7 @@ export function DailyChart({ data }: { data: DayPoint[] }) {
   const y = (v: number) => (v / max) * H
 
   return (
-    <figure className="rounded-lg bg-cream-50 p-5 shadow-card">
+    <figure className="rounded-lg bg-cream-50 p-4 shadow-card md:p-5">
       <figcaption className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <span className="font-display text-[20px] font-semibold text-teal-900">Kiriman per hari</span>
         <span className="flex flex-wrap items-center gap-4 text-[13px] text-teal-800">

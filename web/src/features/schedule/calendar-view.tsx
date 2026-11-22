@@ -61,8 +61,8 @@ export function CalendarView({ deviceId }: { deviceId: string | undefined }) {
   const agenda = byDay.get(selected) ?? []
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[1fr_300px]">
-      <section className="rounded-lg bg-cream-50 p-4 shadow-card md:p-5">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
+      <section className="rounded-lg bg-cream-50 p-3 shadow-card md:p-5">
         <header className="mb-4 flex items-center justify-between gap-3">
           <h2 className="font-display text-[22px] font-semibold text-teal-900">
             {MONTHS_LONG[ym.m]} <span className="text-gold-600 lining-nums">{ym.y}</span>
