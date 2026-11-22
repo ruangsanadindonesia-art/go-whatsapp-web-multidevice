@@ -142,10 +142,27 @@ func NewHermesClient(c Config) *HermesClient {
 // API server. X-Hermes-Session-Id makes Hermes load and extend this chat's own
 // history, so only the newest user text is sent.
 func (h *HermesClient) Reply(ctx context.Context, sessionID, systemPrompt, userText string) (string, error) {
+	return h.complete(ctx, sessionID, systemPrompt, userText)
+}
+
+// ReplyWithImages sends the user text plus images (data: or https URLs) as
+// OpenAI content parts; the Hermes API server passes them to a vision model.
+func (h *HermesClient) ReplyWithImages(ctx context.Context, sessionID, systemPrompt, userText string, images []string) (string, error) {
+	if len(images) == 0 {
+		return h.complete(ctx, sessionID, systemPrompt, userText)
+	}
+	parts := []map[string]any{{"type": "text", "text": userText}}
+	for _, u := range images {
+		parts = append(parts, map[string]any{"type": "image_url", "image_url": map[string]string{"url": u, "detail": "high"}})
+	}
+	return h.complete(ctx, sessionID, systemPrompt, parts)
+}
+
+func (h *HermesClient) complete(ctx context.Context, sessionID, systemPrompt string, userContent any) (string, error) {
 	body := map[string]any{
-		"messages": []map[string]string{
+		"messages": []map[string]any{
 			{"role": "system", "content": systemPrompt},
-			{"role": "user", "content": userText},
+			{"role": "user", "content": userContent},
 		},
 		"stream": false,
 	}
@@ -168,7 +185,7 @@ func (h *HermesClient) Reply(ctx context.Context, sessionID, systemPrompt, userT
 	defer resp.Body.Close()
 	out, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("hermes: HTTP %d: %s", resp.StatusCode, truncate(string(out), 300))
+		return "", &hermesStatusError{status: resp.StatusCode, body: truncate(string(out), 300)}
 	}
 	var r struct {
 		Choices []struct {

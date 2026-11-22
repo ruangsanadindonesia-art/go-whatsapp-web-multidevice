@@ -131,7 +131,7 @@ func TestOutboundPausedBusyQuietAndWorkLock(t *testing.T) {
 	}
 	// Simulate active inbound without starting the debounce scheduler.
 	b.mu.Lock()
-	c := &chat{pending: []string{"halo"}, lastInbound: *clock}
+	c := &chat{pending: []pendingMsg{{text: "halo"}}, lastInbound: *clock}
 	b.chats[user] = c
 	b.mu.Unlock()
 	outboundError(t, sendOutbound(t, b, "Tindak lanjut", "followup", 51), 409, "busy")
