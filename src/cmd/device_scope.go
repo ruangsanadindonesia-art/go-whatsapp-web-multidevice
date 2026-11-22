@@ -108,6 +108,9 @@ func scopedRoute(method, p string) (allowed bool, pathDevice string) {
 		return true, ""
 	case isGet && strings.HasPrefix(p, "/api/app/analytics/"):
 		return true, ""
+	case p == "/api/app/campaigns" || strings.HasPrefix(p, "/api/app/campaigns/"):
+		// Read views plus pause/resume/cancel of the account's own device.
+		return true, ""
 	case isGet && (p == "/chats" || strings.HasPrefix(p, "/user/") || p == "/url" || p == "/app/info"):
 		return true, ""
 	case isGet && len(seg) >= 2 && len(seg) <= 3 && seg[0] == "devices" && seg[1] != "" &&

@@ -200,6 +200,7 @@ func restServer(_ *cobra.Command, _ []string) {
 		rest.InitRestCall(r, callUsecase)
 		rest.InitRestChat(r, chatUsecase)
 		rest.InitRestAnalytics(r, analyticsUsecase)
+		rest.InitRestCampaign(r, campaignUsecase)
 		rest.InitRestSend(r, sendUsecase)
 		rest.InitRestSchedule(r, scheduleUsecase)
 		rest.InitRestUser(r, userUsecase)

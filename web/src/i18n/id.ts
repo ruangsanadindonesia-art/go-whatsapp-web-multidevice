@@ -4,6 +4,7 @@ export const t = {
   nav: {
     home: 'Beranda',
     analytics: 'Analisis',
+    schedule: 'Jadwal',
     manageDevices: 'Kelola device',
   },
   role: { admin: 'Admin', cs: 'CS' },

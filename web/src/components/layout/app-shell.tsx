@@ -1,4 +1,4 @@
-import { BarChart3, ExternalLink, Home } from 'lucide-react'
+import { BarChart3, CalendarClock, ExternalLink, Home } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { NavLink } from 'react-router-dom'
 import logo from '../../assets/logo-ruang-sanad.webp'
@@ -41,6 +41,9 @@ export function AppShell({
           </NavLink>
           <NavLink to="/analisis" className={({ isActive }) => navItem + (isActive ? ' ' + navActive : '')}>
             <BarChart3 size={16} strokeWidth={2} aria-hidden /> {t.nav.analytics}
+          </NavLink>
+          <NavLink to="/jadwal" className={({ isActive }) => navItem + (isActive ? ' ' + navActive : '')}>
+            <CalendarClock size={16} strokeWidth={2} aria-hidden /> {t.nav.schedule}
           </NavLink>
           {identity.role === 'admin' && (
             <a href={apiRoot() + '/'} className={navItem}>

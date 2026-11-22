@@ -477,6 +477,7 @@ func (s *ScheduleService) deliver(ctx context.Context, job *domainChatStorage.Sc
 		var validationErr pkgError.ValidationError
 		if errors.As(err, &validationErr) || errors.Is(err, errScheduledPayload) {
 			_ = s.repo.FailScheduledSend(job.ID, job.LeaseToken, err.Error())
+			s.recordRun(job, "failed", "", err.Error())
 			s.cleanupAssets(job)
 			return err
 		}
@@ -500,6 +501,7 @@ func (s *ScheduleService) deliver(ctx context.Context, job *domainChatStorage.Sc
 	if err := s.repo.CompleteScheduledSend(job.ID, job.LeaseToken, status, response.MessageID, count, timePtr(next)); err != nil {
 		return err
 	}
+	s.recordRun(job, "sent", response.MessageID, "")
 	if status == scheduleStatusCompleted {
 		s.cleanupAssets(job)
 	}
@@ -521,12 +523,25 @@ func (s *ScheduleService) retry(job *domainChatStorage.ScheduledSend, reason str
 // skipOccurrence gives up on the current occurrence: a recurring job moves on
 // to its next slot with a fresh attempt budget, anything else fails.
 func (s *ScheduleService) skipOccurrence(job *domainChatStorage.ScheduledSend, reason string) error {
+	s.recordRun(job, "failed", "", reason)
 	if next, ok := s.nextRun(job, job.OccurrenceCount); ok {
 		return s.repo.RetryScheduledSend(job.ID, job.LeaseToken, reason, 0, next)
 	}
 	err := s.repo.FailScheduledSend(job.ID, job.LeaseToken, reason)
 	s.cleanupAssets(job)
 	return err
+}
+
+// recordRun appends the occurrence's final outcome to the run log. A log
+// failure never changes the send outcome.
+func (s *ScheduleService) recordRun(job *domainChatStorage.ScheduledSend, status, messageID, reason string) {
+	run := &domainChatStorage.ScheduledSendRun{
+		ScheduleID: job.ID, DeviceID: job.DeviceID, OccurrenceAt: job.NextRunAt, ExecutedAt: s.now(),
+		Status: status, MessageID: messageID, Error: reason,
+	}
+	if err := s.repo.RecordScheduledSendRun(run); err != nil {
+		logrus.Warnf("[SCHEDULE] run log for %s not written: %v", job.ID, err)
+	}
 }
 
 func (s *ScheduleService) nextRun(job *domainChatStorage.ScheduledSend, count int) (time.Time, bool) {
