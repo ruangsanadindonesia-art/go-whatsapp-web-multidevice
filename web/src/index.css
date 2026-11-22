@@ -22,6 +22,9 @@
   --color-danger: #a4432f;
   --color-warning: #b98a1e;
   --color-on-dark-muted: #bfd0cc;
+  /* Chart/status "terkirim": success green nudged to pass the dataviz chroma floor. */
+  --color-sent: #2a8360;
+  --color-sent-ink: #1d5e45;
 
   --font-display: 'Playfair Display', Georgia, serif;
   --font-sans: 'Inter Variable', 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;

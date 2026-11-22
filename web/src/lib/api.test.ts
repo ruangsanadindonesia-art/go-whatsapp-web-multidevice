@@ -31,7 +31,7 @@ describe('apiGet', () => {
     const fn = mockFetch(200, { code: 'SUCCESS', results: { ok: 1 } })
     const res = await apiGet<{ ok: number }>('/chats', 'dev1')
     expect(res).toEqual({ ok: 1 })
-    expect(fn).toHaveBeenCalledWith('/chats', expect.objectContaining({ credentials: 'same-origin' }))
+    expect(fn).toHaveBeenCalledWith("/chats", expect.objectContaining({ credentials: "same-origin", method: "GET" }))
     const headers = fn.mock.calls[0][1].headers as Record<string, string>
     expect(headers['X-Device-Id']).toBe('dev1')
   })
@@ -50,5 +50,20 @@ describe('apiGet', () => {
     mockFetch(403, { code: 'DEVICE_NOT_ALLOWED', message: 'no' })
     await expect(apiGet('/x')).rejects.toMatchObject({ status: 403, code: 'DEVICE_NOT_ALLOWED' })
     await expect(apiGet('/x')).rejects.toBeInstanceOf(ApiError)
+  })
+})
+
+describe('apiPost / apiUrl', () => {
+  it('posts with the device header', async () => {
+    setBase('http://localhost/panel/')
+    const fn = mockFetch(200, { results: { changed: 1 } })
+    const { apiPost } = await import('./api')
+    expect(await apiPost('/api/app/campaigns/k/pause', 'dev1')).toEqual({ changed: 1 })
+    expect(fn.mock.calls[0][1].method).toBe('POST')
+  })
+  it('builds media URLs with device_id', async () => {
+    setBase('http://localhost/wa/panel/')
+    const { apiUrl } = await import('./api')
+    expect(apiUrl('/api/app/campaigns/assets/s1/image', 'dev 1')).toBe('/wa/api/app/campaigns/assets/s1/image?device_id=dev%201')
   })
 })
