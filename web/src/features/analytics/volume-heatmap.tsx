@@ -1,4 +1,4 @@
-import { DAY_NAMES } from '../../lib/format'
+import { DAY_NAMES, DAY_SHORT } from '../../lib/format'
 import { serviceHourSet, weekdayGrid, type HourBucket } from './api'
 
 // Teal ramp on cream; empty cells stay paper-coloured.
@@ -19,14 +19,15 @@ export function VolumeHeatmap({ buckets, serviceHours }: { buckets: HourBucket[]
           <span className="inline-block h-0.5 w-5 bg-gold-500" aria-hidden /> jam layanan
         </p>
       </div>
-      <div className="overflow-x-auto rounded-lg bg-cream-50 p-5 shadow-card">
-        <table className="w-full min-w-[640px] table-fixed border-separate border-spacing-[3px]" aria-label="Jumlah pesan masuk per hari dan jam">
+      <div className="overflow-x-auto rounded-lg bg-cream-50 p-3 shadow-card md:p-5">
+        <table className="w-full table-fixed border-separate border-spacing-[2px] md:min-w-[640px] md:border-spacing-[3px]" aria-label="Jumlah pesan masuk per hari dan jam">
           <thead>
             <tr>
-              <th className="w-14" />
+              <th className="w-9 md:w-14" />
               {Array.from({ length: 24 }, (_, h) => (
                 <th key={h} scope="col" className="relative pb-1.5 text-[11px] font-medium text-teal-600 tabular-nums">
-                  {h % 3 === 0 ? String(h).padStart(2, '0') : ''}
+                  <span className="max-md:hidden">{h % 3 === 0 ? String(h).padStart(2, '0') : ''}</span>
+                  <span className="md:hidden">{h % 6 === 0 ? String(h).padStart(2, '0') : ''}</span>
                   {service.has(h) && <span className="absolute inset-x-0 bottom-0 h-0.5 bg-gold-500" aria-hidden />}
                 </th>
               ))}
@@ -36,13 +37,14 @@ export function VolumeHeatmap({ buckets, serviceHours }: { buckets: HourBucket[]
             {order.map((dow) => (
               <tr key={dow}>
                 <th scope="row" className="pr-2 text-left text-[12px] font-medium text-teal-600">
-                  {DAY_NAMES[dow]}
+                  <span className="md:hidden">{DAY_SHORT[dow]}</span>
+                  <span className="max-md:hidden">{DAY_NAMES[dow]}</span>
                 </th>
                 {grid[dow].map((v, h) => (
                   <td
                     key={h}
                     title={`${DAY_NAMES[dow]} ${String(h).padStart(2, '0')}.00 · ${v} pesan masuk`}
-                    className="h-6 rounded-[3px]"
+                    className="h-5 rounded-[2px] md:h-6 md:rounded-[3px]"
                     style={{ backgroundColor: RAMP[level(v)] }}
                   />
                 ))}

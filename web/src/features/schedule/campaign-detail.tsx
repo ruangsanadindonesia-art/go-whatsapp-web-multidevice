@@ -9,7 +9,10 @@ import { CAMPAIGN_STATUS, SCHEDULE_STATUS, describeSchedule, typeLabel } from '.
 import { MessageBubble } from './message-bubble'
 
 const btn =
-  'inline-flex h-10 items-center gap-2 rounded-full px-4 text-[13px] font-semibold transition-[background-color,border-color,transform] duration-150 active:scale-[0.97] disabled:opacity-50 disabled:pointer-events-none'
+  'inline-flex h-11 items-center justify-center gap-1.5 rounded-full px-3 sm:h-10 sm:gap-2 sm:px-4 text-[13px] font-semibold transition-[background-color,border-color,transform] duration-150 active:scale-[0.97] disabled:opacity-50 disabled:pointer-events-none'
+
+// Recipients shown on phones before "Tampilkan semua".
+const RECIPIENT_PREVIEW = 8
 
 const CONFIRM = {
   pause: 'Jeda semua kiriman terjadwal di campaign ini?',
@@ -26,6 +29,7 @@ export function CampaignDetailPage({ deviceId }: { deviceId: string | undefined 
   const detail = useCampaign(deviceId, key)
   const action = useCampaignAction(deviceId, key)
   const [note, setNote] = useState<string | null>(null)
+  const [allRecipients, setAllRecipients] = useState(false)
 
   const run = (a: 'pause' | 'resume' | 'cancel') => {
     if (!window.confirm(CONFIRM[a])) return
@@ -61,10 +65,10 @@ export function CampaignDetailPage({ deviceId }: { deviceId: string | undefined 
       </Link>
       <PageHeading eyebrow={`Campaign · ${typeLabel(d.message_type)}`} title={d.summary ? d.summary.slice(0, 60) : 'Pesan terjadwal'} />
 
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
         <div className="flex flex-col gap-6">
           <MessageBubble m={d.message} deviceId={deviceId} time={describeSchedule(d).split(' · ').at(-1)} />
-          <dl className="grid grid-cols-2 gap-x-6 gap-y-4 rounded-lg bg-cream-50 p-5 text-[13px] shadow-card">
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-4 rounded-lg bg-cream-50 p-4 md:gap-x-6 md:p-5 text-[13px] shadow-card">
             <div className="col-span-2">
               <dt className="text-teal-600">Jadwal</dt>
               <dd className="mt-0.5 font-semibold text-teal-900">{describeSchedule(d)}</dd>
@@ -90,7 +94,7 @@ export function CampaignDetailPage({ deviceId }: { deviceId: string | undefined 
               <dd className="mt-0.5 font-semibold text-teal-900 tabular-nums">{formatWIBDateTime(d.created_at)}</dd>
             </div>
           </dl>
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap">
             <button disabled={!canPause || action.isPending} onClick={() => run('pause')} className={btn + ' border border-sage-300 bg-cream-50 text-teal-800 hover:border-gold-500'}>
               <Pause size={16} aria-hidden /> Jeda
             </button>
@@ -113,9 +117,9 @@ export function CampaignDetailPage({ deviceId }: { deviceId: string | undefined 
             <h2 className="mb-3 font-display text-[20px] font-semibold text-teal-900">
               Penerima <span className="text-gold-600 lining-nums">{d.recipients}</span>
             </h2>
-            <ul className="max-h-[420px] divide-y divide-sage-300 overflow-auto rounded-lg bg-cream-50 shadow-card">
-              {d.recipient_list.map((r) => (
-                <li key={r.schedule_id} className="flex items-start gap-3 px-5 py-3">
+            <ul className="divide-y divide-sage-300 rounded-lg bg-cream-50 shadow-card md:max-h-[420px] md:overflow-auto">
+              {d.recipient_list.map((r, idx) => (
+                <li key={r.schedule_id} className={(idx >= RECIPIENT_PREVIEW && !allRecipients ? 'max-md:hidden ' : '') + 'flex items-start gap-3 px-4 py-3 md:px-5'}>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-medium text-teal-900">{chatLabel(jid(r.phone), r.name)}</span>
                     {r.last_error && r.status !== 'completed' && <span className="block text-[12px] text-danger [overflow-wrap:anywhere]">{r.last_error}</span>}
@@ -129,6 +133,14 @@ export function CampaignDetailPage({ deviceId }: { deviceId: string | undefined 
                 </li>
               ))}
             </ul>
+            {d.recipient_list.length > RECIPIENT_PREVIEW && (
+              <button
+                onClick={() => setAllRecipients(!allRecipients)}
+                className="mt-3 h-11 w-full rounded-full border border-sage-300 text-[13px] font-semibold text-teal-800 transition-colors hover:border-gold-500 md:hidden"
+              >
+                {allRecipients ? 'Ringkas daftar' : `Tampilkan semua ${d.recipient_list.length} penerima`}
+              </button>
+            )}
           </section>
 
           <section>
@@ -138,9 +150,9 @@ export function CampaignDetailPage({ deviceId }: { deviceId: string | undefined 
                 Belum ada kiriman tercatat. Riwayat mulai dicatat sejak fitur ini aktif.
               </p>
             ) : (
-              <ol className="max-h-[360px] divide-y divide-sage-300 overflow-auto rounded-lg bg-cream-50 shadow-card">
+              <ol className="divide-y divide-sage-300 rounded-lg bg-cream-50 shadow-card md:max-h-[360px] md:overflow-auto">
                 {d.runs.map((r, i) => (
-                  <li key={i} className="flex items-start gap-3 px-5 py-3 text-[13px]">
+                  <li key={i} className="flex items-start gap-3 px-4 py-3 text-[13px] md:px-5">
                     {r.status === 'sent' ? (
                       <CircleCheck size={16} className="mt-0.5 shrink-0 text-sent" aria-label="Terkirim" />
                     ) : (

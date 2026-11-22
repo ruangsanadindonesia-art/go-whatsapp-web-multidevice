@@ -31,10 +31,10 @@ export function DashboardView({ data }: { data: Dashboard }) {
         </p>
       )}
 
-      <section className="grid gap-6 rounded-lg bg-cream-50 p-6 shadow-card lg:grid-cols-[1.2fr_2fr]">
+      <section className="grid grid-cols-[minmax(0,1fr)] gap-6 rounded-lg bg-cream-50 p-5 shadow-card md:p-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,2fr)]">
         <div>
           <p className="eyebrow">Terkirim</p>
-          <p className="mt-2 font-display text-[52px] leading-none font-semibold text-teal-900 lining-nums tabular-nums">{t.sent.toLocaleString('id-ID')}</p>
+          <p className="mt-2 font-display text-[44px] leading-none md:text-[52px] font-semibold text-teal-900 lining-nums tabular-nums">{t.sent.toLocaleString('id-ID')}</p>
           <div className="mt-4 flex items-center gap-3">
             <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-cream-200" role="img" aria-label={`Tingkat berhasil ${percent(t.success_rate)}`}>
               <div className="h-full rounded-full" style={{ width: ran ? percent(t.success_rate) : '0%', background: SERIES[0].color }} />
@@ -42,7 +42,7 @@ export function DashboardView({ data }: { data: Dashboard }) {
             <p className="text-[13px] font-semibold text-teal-900 tabular-nums">{ran ? percent(t.success_rate) : '—'} berhasil</p>
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-x-6 gap-y-5 border-t border-sage-300 pt-5 sm:grid-cols-4 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-6">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-5 border-t border-sage-300 pt-5 sm:grid-cols-4 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-6">
           <Figure label="Gagal" value={t.failed.toLocaleString('id-ID')} note={t.failed ? 'perlu dicek' : undefined} />
           <Figure label="Dijadwalkan" value={t.upcoming.toLocaleString('id-ID')} note="sisa rentang ini" />
           <Figure label="Penerima" value={t.recipients.toLocaleString('id-ID')} note="nomor unik" />
@@ -52,7 +52,7 @@ export function DashboardView({ data }: { data: Dashboard }) {
 
       <DailyChart data={data.daily} />
 
-      <div className="grid gap-8 lg:grid-cols-[1.4fr_1fr]">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
         <section>
           <h2 className="mb-3 font-display text-[20px] font-semibold text-teal-900">Campaign teraktif</h2>
           {data.top_campaigns.length === 0 ? (
@@ -63,7 +63,7 @@ export function DashboardView({ data }: { data: Dashboard }) {
                 const st = CAMPAIGN_STATUS[c.status]
                 return (
                   <li key={c.key}>
-                    <Link to={`/jadwal/c/${c.key}`} className="flex items-center gap-4 px-5 py-3.5 transition-colors hover:bg-gold-100/50">
+                    <Link to={`/jadwal/c/${c.key}`} className="flex items-center gap-3 px-4 py-3.5 transition-colors hover:bg-gold-100/50 md:gap-4 md:px-5">
                       <span className="w-5 font-display text-[18px] text-gold-600 lining-nums">{i + 1}</span>
                       <span className="min-w-0 flex-1">
                         <span className="block truncate font-medium text-teal-900">{c.summary || '(tanpa teks)'}</span>
@@ -117,15 +117,18 @@ export function DashboardView({ data }: { data: Dashboard }) {
           <ul className="divide-y divide-sage-300 overflow-hidden rounded-lg bg-cream-50 shadow-card">
             {data.recent_failures.map((r, i) => (
               <li key={i}>
-                <Link to={r.campaign_key ? `/jadwal/c/${r.campaign_key}` : '#'} className="flex items-start gap-3 px-5 py-3.5 transition-colors hover:bg-gold-100/50">
+                <Link to={r.campaign_key ? `/jadwal/c/${r.campaign_key}` : '#'} className="flex items-start gap-3 px-4 py-3.5 transition-colors hover:bg-gold-100/50 md:px-5">
                   <AlertTriangle size={16} strokeWidth={2} className="mt-0.5 shrink-0 text-danger" aria-label="Gagal" />
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate font-medium text-teal-900">
-                      {chatLabel(r.phone.includes('@') ? r.phone : r.phone + '@s.whatsapp.net', '')} · {r.summary}
+                    <span className="flex items-baseline justify-between gap-3">
+                      <span className="truncate font-medium text-teal-900">
+                        {chatLabel(r.phone.includes('@') ? r.phone : r.phone + '@s.whatsapp.net', '')}
+                      </span>
+                      <span className="shrink-0 text-[12px] text-teal-600 tabular-nums">{formatWIBDateTime(r.executed_at).split(', ')[1]}</span>
                     </span>
-                    <span className="block text-[13px] text-danger">{r.error || 'Gagal terkirim'}</span>
+                    <span className="block truncate text-[13px] text-teal-600">{r.summary}</span>
+                    <span className="block text-[13px] text-danger [overflow-wrap:anywhere]">{r.error || 'Gagal terkirim'}</span>
                   </span>
-                  <span className="shrink-0 text-[12px] text-teal-600 tabular-nums">{formatWIBDateTime(r.executed_at)}</span>
                 </Link>
               </li>
             ))}
