@@ -1,5 +1,7 @@
 # Menu Jadwal Campaign (`/panel/jadwal`) — Spec & Implementation Plan
 
+> Status: implemented on branch `claude/schedule-campaign-panel` (stacked on PR #23).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:executing-plans. Steps use `- [ ]`.
 
 **Goal:** A "Jadwal" menu in the Ruang Sanad panel with a campaign dashboard, a calendar, a campaign list, and a campaign detail view that shows the full scheduled message, its recipients and their send history, plus pause/resume/cancel.
