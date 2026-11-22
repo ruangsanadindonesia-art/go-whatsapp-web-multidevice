@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	domainAnalytics "github.com/aldinokemal/go-whatsapp-web-multidevice/domains/analytics"
+	domainCampaign "github.com/aldinokemal/go-whatsapp-web-multidevice/domains/campaign"
 	analyticsinfra "github.com/aldinokemal/go-whatsapp-web-multidevice/infrastructure/analytics"
 	"github.com/aldinokemal/go-whatsapp-web-multidevice/pkg/servicehours"
 	"os"
@@ -49,6 +50,7 @@ var (
 	callUsecase       domainCall.ICallUsecase
 	chatUsecase       domainChat.IChatUsecase
 	analyticsUsecase  domainAnalytics.IAnalyticsUsecase
+	campaignUsecase   domainCampaign.ICampaignUsecase
 	sendUsecase       domainSend.ISendUsecase
 	scheduleUsecase   domainSend.IScheduleUsecase
 	userUsecase       domainUser.IUserUsecase
@@ -762,10 +764,12 @@ func initApp() {
 	if err != nil {
 		logrus.Fatalf("invalid CS_SERVICE_HOURS/CS_SERVICE_TZ: %v", err)
 	}
-	analyticsUsecase = usecase.NewAnalyticsService(analyticsinfra.NewSQLiteReader(chatStorageDB), serviceSchedule)
+	analyticsReader := analyticsinfra.NewSQLiteReader(chatStorageDB)
+	analyticsUsecase = usecase.NewAnalyticsService(analyticsReader, serviceSchedule)
 	baseSendUsecase := usecase.NewSendService(appUsecase, chatStorageRepo)
 	scheduleService := usecase.NewScheduleService(chatStorageRepo, baseSendUsecase, dm, config.PathStorages)
 	scheduleUsecase = scheduleService
+	campaignUsecase = usecase.NewCampaignService(chatStorageRepo, scheduleService, analyticsReader, config.PathStorages, serviceSchedule.Loc)
 	sendUsecase = usecase.NewScheduledSendService(baseSendUsecase, scheduleService)
 	userUsecase = usecase.NewUserService(chatStorageRepo)
 	messageUsecase = usecase.NewMessageService(chatStorageRepo)

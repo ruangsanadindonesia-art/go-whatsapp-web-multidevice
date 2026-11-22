@@ -5,8 +5,13 @@ package campaign
 
 import (
 	"context"
+	"errors"
 	"time"
 )
+
+// ErrNotFound is returned for unknown campaign keys, schedules or assets,
+// including ones that belong to another device.
+var ErrNotFound = errors.New("campaign not found")
 
 // Derived campaign statuses.
 const (

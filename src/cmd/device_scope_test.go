@@ -210,3 +210,14 @@ func TestDeviceScopeBlocksOtherDeviceAnalytics(t *testing.T) {
 	_, body = do(t, app, call{"cs-bridge", "GET", "/api/app/analytics/volume", ""})
 	require.Equal(t, "ok device=cs-ai", body)
 }
+
+func TestDeviceScopeCampaignsUseOwnDevice(t *testing.T) {
+	app := scopeApp("")
+	code, _ := do(t, app, call{"cs-bridge", "GET", "/api/app/campaigns/dashboard", "cs-ai"})
+	require.Equal(t, 200, code)
+	code, _ = do(t, app, call{"cs-bridge", "POST", "/api/app/campaigns/abc/pause", "cs-ai"})
+	require.Equal(t, 200, code)
+	code, body := do(t, app, call{"cs-bridge", "GET", "/api/app/campaigns/abc", "keuangan"})
+	require.Equal(t, 403, code)
+	require.Contains(t, body, "DEVICE_NOT_ALLOWED")
+}

@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"path/filepath"
 	"sort"
@@ -19,9 +18,8 @@ import (
 	"github.com/aldinokemal/go-whatsapp-web-multidevice/validations"
 )
 
-// ErrCampaignNotFound is returned for unknown campaign keys, schedules or assets
-// (including ones that belong to another device).
-var ErrCampaignNotFound = errors.New("campaign not found")
+// ErrCampaignNotFound aliases the domain error.
+var ErrCampaignNotFound = domainCampaign.ErrNotFound
 
 // maxProjectedOccurrences caps projected occurrences per schedule per request.
 const maxProjectedOccurrences = 500
